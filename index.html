@@ -1,0 +1,3392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat Gain Calculator</title>
+<script src="/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a5276;--primary-light:#2980b9;--accent:#e67e22;
+  --bg:#f4f6f8;--card:#fff;--border:#dce1e6;
+  --text:#2c3e50;--text-light:#7f8c8d;
+  --error:#e74c3c;--success:#27ae60;--warning:#f39c12;
+  --heat-gain:#e74c3c;--heat-loss:#3498db;
+  --radius:8px;--shadow:0 2px 8px rgba(0,0,0,0.08);
+  --input-h:38px;--label-fs:.82rem;--label-fw:600;--label-mb:6px;
+  --row-gap:16px;--col-gap:16px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;padding:0}
+
+.app-header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:14px 30px}
+.app-header h1{font-size:1.4rem;font-weight:700}
+
+.proj-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+.proj-card h3{font-size:.95rem;font-weight:700;color:var(--primary);margin-bottom:12px}
+.proj-card .row{display:flex;gap:16px;flex-wrap:wrap;align-items:start}
+.proj-card .field{display:flex;flex-direction:column;gap:4px}
+.proj-card .field label{font-size:.82rem;font-weight:600;color:var(--text)}
+.proj-card .field input[type="text"]{height:var(--input-h);padding:0 10px;border:1.5px solid var(--border);border-radius:5px;font-size:.88rem;min-width:220px}
+.proj-card .field input:focus{outline:none;border-color:var(--primary-light)}
+.proj-card .field input.invalid{border-color:var(--error);background:#fdf2f2}
+.proj-card .proj-warn{font-size:.72rem;color:var(--error);min-height:16px;margin-top:4px}
+.proj-card .btn-group{display:flex;gap:10px;flex-wrap:wrap}
+
+.tab-bar{display:flex;background:var(--card);border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-bar button{padding:10px 18px;border:none;background:transparent;color:var(--text-light);font-size:.84rem;font-weight:600;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:all .2s}
+.tab-bar button:hover{color:var(--primary);background:#f0f4f8}
+.tab-bar button.active{color:var(--primary);border-bottom-color:var(--primary);background:#eaf2f8}
+
+.container{max-width:1100px;margin:0 auto;padding:20px}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.section{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.section-header{background:var(--primary);color:#fff;padding:12px 20px;font-size:1rem;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.section-header:hover{background:var(--primary-light)}
+.section-header .toggle-icon{transition:transform .2s}
+.section-header.collapsed .toggle-icon{transform:rotate(-90deg)}
+.section-body{padding:20px}
+.section-body.hidden{display:none}
+
+.row{display:flex;flex-wrap:wrap;gap:var(--col-gap);margin-bottom:14px;align-items:flex-end}
+
+.field{display:flex;flex-direction:column;gap:var(--label-mb);flex:1;min-width:140px}
+.field label{font-size:var(--label-fs);font-weight:var(--label-fw);color:var(--text);line-height:1.3;white-space:nowrap}
+.field .unit-hint{font-size:.72rem;color:var(--text-light);font-weight:400}
+.field input,.field select{
+  height:var(--input-h);padding:0 10px;
+  border:1.5px solid var(--border);border-radius:5px;
+  font-size:.88rem;line-height:var(--input-h);
+  transition:border-color .2s;
+  width:100%;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--primary-light)}
+.field input.invalid{border-color:var(--error);background:#fdf2f2}
+.field .error-msg{font-size:.72rem;color:var(--error);min-height:0}
+.dual-display{font-size:.76rem;color:var(--text-light);margin-top:2px;line-height:1.3}
+
+.btn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-size:.82rem;font-weight:600;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#d35400}
+.btn-small{padding:5px 10px;font-size:.75rem;height:28px;line-height:1}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-danger{background:var(--error);color:#fff}
+.btn-danger:hover{background:#c0392b}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#219a52}
+
+.toggle-group{display:inline-flex;border-radius:5px;overflow:hidden;border:1.5px solid var(--primary)}
+.toggle-group .tg-btn{padding:6px 16px;background:#fff;color:var(--primary);border:none;cursor:pointer;font-size:.82rem;font-weight:600;transition:all .2s}
+.toggle-group .tg-btn.active{background:var(--primary);color:#fff}
+
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.checkbox-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--primary)}
+
+.surface-temp-row{
+  display:grid;
+  grid-template-columns:90px 72px auto auto 1fr;
+  align-items:center;gap:8px;
+  margin-bottom:2px;padding:6px 10px;
+  background:#f8f9fa;border-radius:4px;
+}
+.surface-temp-row label{font-weight:var(--label-fw);font-size:.82rem;white-space:nowrap}
+.surface-temp-row input{
+  width:72px;height:32px;padding:0 6px;
+  border:1.5px solid var(--border);border-radius:4px;
+  font-size:.84rem;line-height:32px;
+}
+.surface-temp-row .unit-hint{font-size:.74rem;white-space:nowrap}
+.surface-temp-row .dual-display{font-size:.74rem;white-space:nowrap}
+.surface-temp-row .btn{justify-self:end}
+
+.temp-subgroup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:900px){.temp-subgroup-grid{grid-template-columns:1fr}}
+.temp-subgroup{margin-bottom:6px;padding:8px 10px;border:1px solid var(--border);border-radius:5px}
+.temp-subgroup-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px}
+.temp-subgroup-header strong{font-size:.82rem;color:var(--primary)}
+.temp-subgroup .surface-temp-row{
+  grid-template-columns:80px 72px auto auto 1fr;
+}
+
+.u-surface-block{padding:12px 14px;margin-bottom:10px;background:#f8f9fa;border-radius:5px;border:1px solid var(--border)}
+.u-surface-label{font-weight:700;font-size:.85rem;color:var(--primary);margin-bottom:8px}
+.u-engineering-line{font-size:.72rem;color:var(--text-light);padding:4px 0;line-height:1.6;word-break:break-word}
+.u-custom-note{font-size:.78rem;color:var(--warning);font-weight:600;align-self:center;padding-top:18px}
+.tooltip-trigger{cursor:help;color:var(--primary-light);font-size:.9rem}
+
+.row-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--col-gap);margin-bottom:14px;align-items:start}
+.row-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--col-gap);margin-bottom:14px;align-items:start}
+
+table.results-table{width:100%;border-collapse:collapse;font-size:.85rem}
+table.results-table th,table.results-table td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+table.results-table th{background:#f0f3f6;font-weight:700;color:var(--primary);font-size:.8rem;text-transform:uppercase}
+table.results-table tr.subtotal{background:#eaf2f8;font-weight:700}
+table.results-table tr.grand-total{background:var(--primary);color:#fff;font-weight:700;font-size:1rem}
+table.results-table tr.grand-total td{border:none}
+.heat-gain{color:var(--heat-gain)}
+.heat-loss{color:var(--heat-loss)}
+
+.equip-row{display:grid;grid-template-columns:2fr 100px 90px auto;gap:10px;align-items:center;margin-bottom:8px}
+.equip-row input{
+  height:var(--input-h);padding:0 8px;
+  border:1.5px solid var(--border);border-radius:5px;
+  font-size:.85rem;line-height:var(--input-h);width:100%;
+}
+
+.info-text{font-size:.78rem;color:var(--text-light);margin-bottom:10px}
+.separator{border-top:1px solid var(--border);margin:16px 0}
+
+.wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.wall-card{border:1.5px solid var(--border);border-radius:5px;padding:12px}
+.wall-card h4{font-size:.85rem;color:var(--primary);margin-bottom:8px}
+.wall-card .field{min-width:auto}
+
+.copy-toast{position:fixed;bottom:30px;right:30px;background:var(--success);color:#fff;padding:12px 24px;border-radius:var(--radius);font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.2);transform:translateY(100px);opacity:0;transition:all .3s;z-index:999}
+.copy-toast.show{transform:translateY(0);opacity:1}
+
+.file-status{font-size:.72rem;color:var(--text-light);margin-top:2px}
+.file-status .yes{color:var(--success)}
+.file-status .no{color:var(--warning)}
+.iframe-warn{font-size:.72rem;color:var(--warning);background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:4px 8px;display:none;align-items:center;gap:6px;flex-wrap:wrap}
+.iframe-warn .btn{font-size:.7rem;padding:3px 8px;height:auto}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-box{background:var(--card);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.25);padding:28px;max-width:460px;width:90%}
+.modal-box h3{font-size:1rem;margin-bottom:10px;color:var(--primary)}
+.modal-box p{font-size:.88rem;line-height:1.5;color:var(--text);margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+.glass-debug-controls{display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap}
+.glass-debug-controls label{font-size:.82rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;cursor:pointer}
+.glass-debug-controls input[type="number"]{height:var(--input-h);padding:0 8px;border:1.5px solid var(--border);border-radius:5px;font-size:.88rem;width:110px}
+.glass-debug-delta{font-size:.82rem;font-weight:600;min-width:140px}
+.glass-debug-panel{background:#f8f9fb;border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:10px;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:.78rem;line-height:1.65;color:var(--text);display:none;overflow-x:auto}
+.glass-debug-panel.visible{display:block}
+.glass-debug-panel h4{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:.85rem;color:var(--primary);margin:10px 0 4px;font-weight:700}
+.glass-debug-panel h4:first-child{margin-top:0}
+.glass-debug-panel .dbg-row{display:flex;justify-content:space-between;max-width:520px;padding:1px 0}
+.glass-debug-panel .dbg-row .dbg-label{color:var(--text-light)}
+.glass-debug-panel .dbg-row .dbg-val{font-weight:600}
+
+@media(max-width:700px){
+  .row{flex-direction:column}
+  .row-grid-3,.row-grid-4{grid-template-columns:1fr}
+  .wall-grid{grid-template-columns:1fr}
+  .app-header{flex-direction:column;align-items:flex-start}
+  .surface-temp-row,.temp-subgroup .surface-temp-row{
+    grid-template-columns:80px 72px auto;
+  }
+  .surface-temp-row .dual-display{display:none}
+  .equip-row{grid-template-columns:1fr 1fr;gap:8px}
+  .proj-card .row{flex-direction:column}
+  .proj-card .btn-group{flex-direction:column}
+  .tab-bar button{padding:8px 12px;font-size:.78rem}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Heat Gain Calculator</h1>
+</div>
+
+<div class="modal-overlay" id="fallbackModal">
+  <div class="modal-box">
+    <h3>File Picker Not Available</h3>
+    <p>This browser or environment does not support choosing a folder. Use Chrome or Edge and open the offline HTML directly (not inside an embedded preview) to enable Save As / Open dialogs.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeFallbackModal()">Cancel</button>
+      <button class="btn btn-primary" id="fallbackDownloadBtn">Download Anyway</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-bar" id="tabBar">
+  <button class="active" onclick="switchTab('project')">Project</button>
+  <button onclick="switchTab('geometry')">Geometry</button>
+  <button onclick="switchTab('temperatures')">Temperatures</button>
+  <button onclick="switchTab('solidU')">Solid U-Values</button>
+  <button onclick="switchTab('glass')">Glass Config</button>
+  <button onclick="switchTab('internal')">Internal Gains</button>
+  <button onclick="switchTab('solar')">Solar / SHGC</button>
+  <button onclick="switchTab('results')">Results</button>
+</div>
+
+<div class="container">
+
+<!-- TAB: GEOMETRY -->
+<div class="tab-panel active" id="tab-project">
+  <div class="proj-card">
+    <h3>Project Information</h3>
+    <div class="row">
+      <div class="field">
+        <label for="projectName">Project Name</label>
+        <input type="text" id="projectName" placeholder="e.g. Napa Valley Cellar" oninput="clearProjWarn()">
+      </div>
+      <div class="field">
+        <label for="projectDate">Project Date</label>
+        <input type="text" id="projectDate" placeholder="e.g. 2026-03-01" oninput="clearProjWarn()">
+      </div>
+    </div>
+    <div class="proj-warn" id="projWarn"></div>
+    <div class="file-status" id="fileAccessStatus"></div>
+    <div class="iframe-warn" id="iframeWarn">
+      Embedded preview may block folder selection. Open in a new tab for full file access.
+      <button class="btn btn-outline" onclick="window.open(location.href,'_blank')">Open in New Tab</button>
+    </div>
+  </div>
+
+  <div class="proj-card">
+    <h3>Project Files</h3>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveProject()">Save Project (JSON)</button>
+      <button class="btn btn-outline" onclick="loadProject()">Load Project (JSON)</button>
+      <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="onLoadFileSelected(this)">
+      <button class="btn btn-accent" onclick="exportOffline()">Export Offline Package</button>
+    </div>
+  </div>
+
+  <div class="proj-card">
+    <h3>Global Actions</h3>
+    <div class="btn-group">
+      <button class="btn btn-accent" onclick="resetDefaults()">Reset Defaults</button>
+      <button class="btn btn-success" onclick="generatePDF()">Summary PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-geometry">
+  <div class="section">
+    <div class="section-body">
+      <div class="row" style="margin-bottom:18px">
+        <div class="field" style="flex:0 0 auto">
+          <label>Input Mode</label>
+          <div class="toggle-group">
+            <button class="tg-btn active" id="btnMetric" onclick="setUnit('metric')">Metric</button>
+            <button class="tg-btn" id="btnImperial" onclick="setUnit('imperial')">Imperial</button>
+          </div>
+        </div>
+      </div>
+      <strong style="font-size:.88rem">Floor / Ceiling Area</strong>
+      <div style="margin-bottom:8px">
+        <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="floorMode" value="rect" checked onchange="onFloorModeChange()"> Rectangular Room (Width × Length)
+        </label>
+        <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:2px">
+          <input type="radio" name="floorMode" value="irregular" onchange="onFloorModeChange()"> Irregular Room (enter area directly)
+        </label>
+      </div>
+      <div id="floorRectRow" class="row-grid-3">
+        <div class="field">
+          <label>Room Width <span class="unit-hint" id="unitWidth">(m)</span></label>
+          <input type="number" id="roomWidth" min="0.01" step="0.01" placeholder="e.g. 5" oninput="onRoomDimInput()">
+          <div class="dual-display" id="dualWidth"></div>
+          <div class="error-msg" id="errWidth"></div>
+        </div>
+        <div class="field">
+          <label>Room Length <span class="unit-hint" id="unitLength">(m)</span></label>
+          <input type="number" id="roomLength" min="0.01" step="0.01" placeholder="e.g. 6" oninput="onRoomDimInput()">
+          <div class="dual-display" id="dualLength"></div>
+          <div class="error-msg" id="errLength"></div>
+        </div>
+        <div class="field">
+          <label>Room Height <span class="unit-hint" id="unitHeight">(m)</span></label>
+          <input type="number" id="roomHeight" min="0.01" step="0.01" placeholder="e.g. 2.8" oninput="recalc()">
+          <div class="dual-display" id="dualHeight"></div>
+          <div class="error-msg" id="errHeight"></div>
+        </div>
+      </div>
+      <div id="floorIrregRow" style="display:none">
+        <div class="row-grid-3">
+          <div class="field">
+            <label>Floor Area <span class="unit-hint areaUnit">(m²)</span></label>
+            <input type="number" id="floorAreaDirect" min="0.01" step="0.01" placeholder="e.g. 30" oninput="recalc()">
+            <div class="dual-display" id="dualFloorArea"></div>
+            <div class="error-msg" id="errFloorArea"></div>
+          </div>
+          <div class="field">
+            <label>Room Height <span class="unit-hint" id="unitHeightIrreg">(m)</span></label>
+            <input type="number" id="roomHeightIrreg" min="0.01" step="0.01" placeholder="e.g. 2.8" oninput="recalc()">
+            <div class="dual-display" id="dualHeightIrreg"></div>
+            <div class="error-msg" id="errHeightIrreg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <strong style="font-size:.88rem">Wall Lengths</strong>
+      <div style="margin-bottom:8px">
+        <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="wallMode" value="individual" checked onchange="onWallModeChange()"> Individual Walls
+        </label>
+        <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer;margin-top:2px">
+          <input type="radio" name="wallMode" value="total" onchange="onWallModeChange()"> Total Wall Length
+        </label>
+      </div>
+      <div id="wallIndividualRow">
+        <p class="info-text">Enter wall lengths. Walls left empty or zero will be excluded from conduction calculations.</p>
+        <div class="row-grid-4" id="wallLengthRow">
+          <div class="field">
+            <label>Wall 1 <span class="unit-hint wallLenUnit">(m)</span></label>
+            <input type="number" class="wallLen" id="wallLen1" min="0" step="0.01" oninput="onWallLenManual(1);recalc()" placeholder="0">
+            <div class="dual-display wallLenDual" id="dualWallLen1"></div>
+          </div>
+          <div class="field">
+            <label>Wall 2 <span class="unit-hint wallLenUnit">(m)</span></label>
+            <input type="number" class="wallLen" id="wallLen2" min="0" step="0.01" oninput="onWallLenManual(2);recalc()" placeholder="0">
+            <div class="dual-display wallLenDual" id="dualWallLen2"></div>
+          </div>
+          <div class="field">
+            <label>Wall 3 <span class="unit-hint wallLenUnit">(m)</span></label>
+            <input type="number" class="wallLen" id="wallLen3" min="0" step="0.01" oninput="onWallLenManual(3);recalc()" placeholder="0">
+            <div class="dual-display wallLenDual" id="dualWallLen3"></div>
+          </div>
+          <div class="field">
+            <label>Wall 4 <span class="unit-hint wallLenUnit">(m)</span></label>
+            <input type="number" class="wallLen" id="wallLen4" min="0" step="0.01" oninput="onWallLenManual(4);recalc()" placeholder="0">
+            <div class="dual-display wallLenDual" id="dualWallLen4"></div>
+          </div>
+        </div>
+      </div>
+      <div id="wallTotalRow" style="display:none">
+        <p class="info-text">Enter total wall perimeter. It will be used as a single wall for conduction calculation.</p>
+        <div class="row-grid-3">
+          <div class="field">
+            <label>Total Wall Length <span class="unit-hint wallLenUnit">(m)</span></label>
+            <input type="number" id="wallLenTotal" min="0" step="0.01" placeholder="e.g. 22" oninput="recalc()">
+            <div class="dual-display" id="dualWallLenTotal"></div>
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <strong style="font-size:.88rem">Glass Geometry</strong>
+      <p class="info-text">Glass length per wall (set to 0 for no glass). Glass height defaults to room height.</p>
+      <div class="checkbox-row" style="margin-bottom:8px">
+        <input type="checkbox" id="overrideGlassH" onchange="onGlassHOverride()">
+        <label for="overrideGlassH">Override glass height</label>
+      </div>
+      <div class="row" id="glassHeightRow" style="display:none">
+        <div class="field" style="max-width:200px">
+          <label>Glass Height <span class="unit-hint" id="unitGlassH">(m)</span></label>
+          <input type="number" id="glassHeight" min="0" step="0.01" oninput="recalc()">
+          <div class="dual-display" id="dualGlassH"></div>
+          <div class="error-msg" id="errGlassH"></div>
+        </div>
+      </div>
+      <div class="wall-grid" id="glassGrid">
+        <div class="wall-card">
+          <h4>Glass Wall 1</h4>
+          <div class="field">
+            <label>Glass Length <span class="unit-hint glassLenUnit">(m)</span></label>
+            <input type="number" class="glassLen" id="glassLen1" min="0" step="0.01" value="0" oninput="recalc()">
+            <div class="dual-display glassLenDual" id="dualGlassLen1"></div>
+            <div class="error-msg glassLenErr" id="errGlassLen1"></div>
+          </div>
+        </div>
+        <div class="wall-card">
+          <h4>Glass Wall 2</h4>
+          <div class="field">
+            <label>Glass Length <span class="unit-hint glassLenUnit">(m)</span></label>
+            <input type="number" class="glassLen" id="glassLen2" min="0" step="0.01" value="0" oninput="recalc()">
+            <div class="dual-display glassLenDual" id="dualGlassLen2"></div>
+            <div class="error-msg glassLenErr" id="errGlassLen2"></div>
+          </div>
+        </div>
+        <div class="wall-card">
+          <h4>Glass Wall 3</h4>
+          <div class="field">
+            <label>Glass Length <span class="unit-hint glassLenUnit">(m)</span></label>
+            <input type="number" class="glassLen" id="glassLen3" min="0" step="0.01" value="0" oninput="recalc()">
+            <div class="dual-display glassLenDual" id="dualGlassLen3"></div>
+            <div class="error-msg glassLenErr" id="errGlassLen3"></div>
+          </div>
+        </div>
+        <div class="wall-card">
+          <h4>Glass Wall 4</h4>
+          <div class="field">
+            <label>Glass Length <span class="unit-hint glassLenUnit">(m)</span></label>
+            <input type="number" class="glassLen" id="glassLen4" min="0" step="0.01" value="0" oninput="recalc()">
+            <div class="dual-display glassLenDual" id="dualGlassLen4"></div>
+            <div class="error-msg glassLenErr" id="errGlassLen4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: TEMPERATURES -->
+<div class="tab-panel" id="tab-temperatures">
+  <div class="section">
+    <div class="section-body">
+      <div class="row">
+        <div class="field" style="max-width:220px">
+          <label>Exterior Temperature <span class="unit-hint" id="unitExtTemp">(°C)</span></label>
+          <input type="number" id="extTemp" value="22" step="0.1" oninput="onExtTempChange()">
+          <div class="dual-display" id="dualExtTemp"></div>
+        </div>
+        <div class="field" style="max-width:220px">
+          <label>Inside (Cellar) Temperature <span class="unit-hint" id="unitIntTemp">(°C)</span></label>
+          <input type="number" id="intTemp" value="13" step="0.1" oninput="recalc()">
+          <div class="dual-display" id="dualIntTemp"></div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <strong style="font-size:.88rem">Surface Outside Temperatures</strong>
+        <button class="btn btn-small btn-outline" onclick="resetAllSurfaceTemps()">Reset All to Exterior</button>
+      </div>
+      <div id="surfaceTempContainer">
+        <div class="surface-temp-row">
+          <label>Floor</label>
+          <input type="number" id="surfTempFloor" step="0.1" oninput="surfManual.Floor=true;recalc()">
+          <span class="unit-hint surfTempUnit">(°C)</span>
+          <div class="dual-display" id="dualSurfFloor"></div>
+          <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Floor')">= Exterior</button>
+        </div>
+        <div class="surface-temp-row">
+          <label>Ceiling</label>
+          <input type="number" id="surfTempCeiling" step="0.1" oninput="surfManual.Ceiling=true;recalc()">
+          <span class="unit-hint surfTempUnit">(°C)</span>
+          <div class="dual-display" id="dualSurfCeiling"></div>
+          <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Ceiling')">= Exterior</button>
+        </div>
+
+        <div class="temp-subgroup-grid">
+          <div class="temp-subgroup">
+            <div class="temp-subgroup-header">
+              <strong>Walls</strong>
+              <button class="btn btn-small btn-outline" onclick="applyExtToAllWalls()">Apply Exterior to all walls</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Wall 1</label>
+              <input type="number" id="surfTempWall1" step="0.1" oninput="surfManual.Wall1=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfWall1"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Wall1')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Wall 2</label>
+              <input type="number" id="surfTempWall2" step="0.1" oninput="surfManual.Wall2=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfWall2"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Wall2')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Wall 3</label>
+              <input type="number" id="surfTempWall3" step="0.1" oninput="surfManual.Wall3=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfWall3"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Wall3')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Wall 4</label>
+              <input type="number" id="surfTempWall4" step="0.1" oninput="surfManual.Wall4=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfWall4"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Wall4')">= Exterior</button>
+            </div>
+          </div>
+
+          <div class="temp-subgroup">
+            <div class="temp-subgroup-header">
+              <strong>Glass</strong>
+              <button class="btn btn-small btn-outline" onclick="applyExtToAllGlass()">Apply Exterior to all walls</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Glass Wall 1</label>
+              <input type="number" id="surfTempGlass1" step="0.1" oninput="surfManual.Glass1=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfGlass1"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Glass1')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Glass Wall 2</label>
+              <input type="number" id="surfTempGlass2" step="0.1" oninput="surfManual.Glass2=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfGlass2"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Glass2')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Glass Wall 3</label>
+              <input type="number" id="surfTempGlass3" step="0.1" oninput="surfManual.Glass3=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfGlass3"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Glass3')">= Exterior</button>
+            </div>
+            <div class="surface-temp-row">
+              <label>Glass Wall 4</label>
+              <input type="number" id="surfTempGlass4" step="0.1" oninput="surfManual.Glass4=true;recalc()">
+              <span class="unit-hint surfTempUnit">(°C)</span>
+              <div class="dual-display" id="dualSurfGlass4"></div>
+              <button class="btn btn-small btn-outline" onclick="syncSurfTemp('Glass4')">= Exterior</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: SOLID U-VALUES -->
+<div class="tab-panel" id="tab-solidU">
+  <div class="section">
+    <div class="section-body">
+      <strong style="font-size:.9rem;color:var(--primary)">Solid Surfaces</strong>
+      <p class="info-text">Configure base assembly and insulation for each surface. U = 1 / (Rsi + R_base + R_insulation + Rse). Edit U directly to use Custom U.
+        <span class="tooltip-trigger" title="Rsi = 0.13 m²·K/W (internal surface resistance). Rse = 0.04 m²·K/W (external surface resistance). R = thickness / k for solid layers.">&#9432;</span>
+      </p>
+
+      <div class="u-surface-block" id="uBlockFloor">
+        <div class="u-surface-label">Floor</div>
+        <div style="margin-bottom:4px">
+          <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="disregardBase_Floor" checked onchange="onDisregardBaseChange('Floor')"> Disregard the Base Assembly
+          </label>
+        </div>
+        <div id="baseRow_Floor" class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Base Assembly</label>
+            <select id="baseFloor" onchange="onBaseChange('Floor')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="baseThick1Field_Floor">
+            <label id="lblBaseThick1_Floor">Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick1_Floor" min="1" step="1" value="200" oninput="calcSolidU('Floor')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick2Field_Floor">
+            <label id="lblBaseThick2_Floor">Cavity <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick2_Floor" min="10" max="300" step="1" value="90" oninput="calcSolidU('Floor')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick3Field_Floor">
+            <label id="lblBaseThick3_Floor">Layer 2 <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick3_Floor" min="1" step="1" value="18" oninput="calcSolidU('Floor')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseCustomKField_Floor">
+            <label>k <span style="font-size:.7rem">(W/m·K)</span></label>
+            <input type="number" id="baseCustomK_Floor" min="0.01" step="0.01" value="1.40" oninput="calcSolidU('Floor')">
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Insulation</label>
+            <select id="insFloor" onchange="onInsChange('Floor')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="insThickField_Floor">
+            <label>Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="insThick_Floor" min="0" step="1" value="0" oninput="calcSolidU('Floor')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="insCustomKField_Floor">
+            <label>k <span class="unit-hint">(W/m·K)</span></label>
+            <input type="number" id="insCustomK_Floor" min="0.005" step="0.001" value="0.035" oninput="calcSolidU('Floor')">
+          </div>
+        </div>
+        <div class="u-engineering-line" id="engLine_Floor"></div>
+        <div class="row" style="margin-bottom:0">
+          <div class="field" style="max-width:160px">
+            <label>Resulting U <span class="unit-hint uUnit">(W/m²·K)</span></label>
+            <input type="number" id="uFloor" min="0" step="0.01" value="0.35" oninput="onUManualEdit('Floor')">
+            <div class="dual-display uDual" id="dualUFloor"></div>
+          </div>
+          <div class="u-custom-note" id="customNote_Floor" style="display:none">Using Custom U for calculations</div>
+        </div>
+      </div>
+
+      <div class="u-surface-block" id="uBlockCeiling">
+        <div class="u-surface-label">Ceiling</div>
+        <div style="margin-bottom:4px">
+          <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="disregardBase_Ceiling" checked onchange="onDisregardBaseChange('Ceiling')"> Disregard the Base Assembly
+          </label>
+        </div>
+        <div id="baseRow_Ceiling" class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Base Assembly</label>
+            <select id="baseCeiling" onchange="onBaseChange('Ceiling')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="baseThick1Field_Ceiling">
+            <label id="lblBaseThick1_Ceiling">Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick1_Ceiling" min="1" step="1" value="200" oninput="calcSolidU('Ceiling')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick2Field_Ceiling">
+            <label id="lblBaseThick2_Ceiling">Cavity <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick2_Ceiling" min="10" max="300" step="1" value="90" oninput="calcSolidU('Ceiling')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick3Field_Ceiling">
+            <label id="lblBaseThick3_Ceiling">Layer 2 <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick3_Ceiling" min="1" step="1" value="18" oninput="calcSolidU('Ceiling')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseCustomKField_Ceiling">
+            <label>k <span style="font-size:.7rem">(W/m·K)</span></label>
+            <input type="number" id="baseCustomK_Ceiling" min="0.01" step="0.01" value="1.40" oninput="calcSolidU('Ceiling')">
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Insulation</label>
+            <select id="insCeiling" onchange="onInsChange('Ceiling')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="insThickField_Ceiling">
+            <label>Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="insThick_Ceiling" min="0" step="1" value="0" oninput="calcSolidU('Ceiling')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="insCustomKField_Ceiling">
+            <label>k <span class="unit-hint">(W/m·K)</span></label>
+            <input type="number" id="insCustomK_Ceiling" min="0.005" step="0.001" value="0.035" oninput="calcSolidU('Ceiling')">
+          </div>
+        </div>
+        <div class="u-engineering-line" id="engLine_Ceiling"></div>
+        <div class="row" style="margin-bottom:0">
+          <div class="field" style="max-width:160px">
+            <label>Resulting U <span class="unit-hint uUnit">(W/m²·K)</span></label>
+            <input type="number" id="uCeiling" min="0" step="0.01" value="0.25" oninput="onUManualEdit('Ceiling')">
+            <div class="dual-display uDual" id="dualUCeiling"></div>
+          </div>
+          <div class="u-custom-note" id="customNote_Ceiling" style="display:none">Using Custom U for calculations</div>
+        </div>
+      </div>
+
+      <div class="u-surface-block" id="uBlockWalls">
+        <div class="u-surface-label">Walls</div>
+        <div style="margin-bottom:4px">
+          <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="disregardBase_Walls" checked onchange="onDisregardBaseChange('Walls')"> Disregard the Base Assembly
+          </label>
+        </div>
+        <div id="baseRow_Walls" class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Base Assembly</label>
+            <select id="baseWalls" onchange="onBaseChange('Walls')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="baseThick1Field_Walls">
+            <label id="lblBaseThick1_Walls">Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick1_Walls" min="1" step="1" value="12.5" oninput="calcSolidU('Walls')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick2Field_Walls">
+            <label id="lblBaseThick2_Walls">Cavity <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick2_Walls" min="10" max="300" step="1" value="90" oninput="calcSolidU('Walls')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseThick3Field_Walls">
+            <label id="lblBaseThick3_Walls">Layer 2 <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="baseThick3_Walls" min="1" step="1" value="12.5" oninput="calcSolidU('Walls')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="baseCustomKField_Walls">
+            <label>k <span style="font-size:.7rem">(W/m·K)</span></label>
+            <input type="number" id="baseCustomK_Walls" min="0.01" step="0.01" value="1.40" oninput="calcSolidU('Walls')">
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:4px">
+          <div class="field" style="min-width:200px">
+            <label>Insulation</label>
+            <select id="insWalls" onchange="onInsChange('Walls')"></select>
+          </div>
+          <div class="field" style="max-width:110px" id="insThickField_Walls">
+            <label>Thickness <span class="unit-hint insThickUnit">(mm)</span></label>
+            <input type="number" id="insThick_Walls" min="0" step="1" value="0" oninput="calcSolidU('Walls')">
+          </div>
+          <div class="field" style="max-width:110px;display:none" id="insCustomKField_Walls">
+            <label>k <span class="unit-hint">(W/m·K)</span></label>
+            <input type="number" id="insCustomK_Walls" min="0.005" step="0.001" value="0.035" oninput="calcSolidU('Walls')">
+          </div>
+        </div>
+        <div class="u-engineering-line" id="engLine_Walls"></div>
+        <div class="row" style="margin-bottom:0">
+          <div class="field" style="max-width:160px">
+            <label>Resulting U <span class="unit-hint uUnit">(W/m²·K)</span></label>
+            <input type="number" id="uWalls" min="0" step="0.01" value="0.30" oninput="onUManualEdit('Walls')">
+            <div class="dual-display uDual" id="dualUWalls"></div>
+          </div>
+          <div class="u-custom-note" id="customNote_Walls" style="display:none">Using Custom U for calculations</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: GLASS CONFIGURATION -->
+<div class="tab-panel" id="tab-glass">
+  <div class="section">
+    <div class="section-body">
+      <strong style="font-size:.9rem;color:var(--primary)">Glazing</strong>
+      <p class="info-text">Select glazing configuration. U-value is estimated automatically. Edit U directly to switch to Custom.
+        <span class="tooltip-trigger" title="Approximate glazing U-value model (V1). Based on pane count, thickness, and argon-filled gap width.">&#9432;</span>
+      </p>
+
+      <div class="u-surface-block" id="uBlockGlass">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span></span>
+          <span style="display:flex;gap:8px">
+            <a href="https://insulating-glass-calc.vercel.app/" target="_blank" rel="noopener noreferrer" class="btn btn-small" style="background:#2a7ab5;color:#fff;font-size:.75rem;text-decoration:none">IGU Calculator &#8599;</a>
+            <a href="https://glasstool.sisecam.com/en/HomePage.aspx" target="_blank" rel="noopener noreferrer" class="btn btn-small" style="background:#2a7ab5;color:#fff;font-size:.75rem;text-decoration:none">Sisecam Glass Tool &#8599;</a>
+          </span>
+        </div>
+        <div class="row" style="margin-bottom:6px">
+          <div class="field" style="min-width:180px">
+            <label>Configuration</label>
+            <select id="glazeConfig" onchange="onGlazeConfigChange()">
+              <option value="single">Single glazing</option>
+              <option value="double" selected>Double glazing (IGU)</option>
+              <option value="triple">Triple glazing (IGU)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:160px" id="lowEField">
+            <label>Low-E Coating</label>
+            <select id="lowECoating" onchange="calcGlassU()">
+              <option value="none">None</option>
+              <option value="one">On one pane (typical)</option>
+              <option value="two">On two panes</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:auto;align-self:flex-end;padding-bottom:6px">
+            <label style="font-size:.78rem;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="glazeUseEnvTemps" checked onchange="calcGlassU()"> Use Environmental Conditions for U-value</label>
+          </div>
+        </div>
+
+        <div id="glazeInputs">
+          <div class="row" style="margin-bottom:6px;align-items:start">
+            <div class="field" style="max-width:130px" id="gpane1Field">
+              <label id="lblGPane1">Pane 1 <span class="unit-hint insThickUnit">(mm)</span></label>
+              <input type="number" id="gPane1" min="1" step="0.5" value="4" oninput="calcGlassU()">
+              <div class="dual-display" id="dualGPane1"></div>
+              <div class="dual-display" id="lamStatus1" style="color:#666;font-style:italic"></div>
+            </div>
+            <div class="field" style="max-width:130px" id="gGap1Field">
+              <label>Gap 1 <span class="unit-hint insThickUnit">(mm)</span></label>
+              <input type="number" id="gGap1" min="6" max="20" step="0.5" value="12" oninput="calcGlassU()">
+              <div class="dual-display" id="dualGGap1"></div>
+              <div class="error-msg" id="errGGap1"></div>
+            </div>
+            <div class="field" style="max-width:130px" id="gPane2Field">
+              <label id="lblGPane2">Pane 2 <span class="unit-hint insThickUnit">(mm)</span></label>
+              <input type="number" id="gPane2" min="1" step="0.5" value="4" oninput="calcGlassU()">
+              <div class="dual-display" id="dualGPane2"></div>
+              <div class="dual-display" id="lamStatus2" style="color:#666;font-style:italic"></div>
+            </div>
+            <div class="field" style="max-width:130px" id="gGap2Field">
+              <label>Gap 2 <span class="unit-hint insThickUnit">(mm)</span></label>
+              <input type="number" id="gGap2" min="6" max="20" step="0.5" value="12" oninput="calcGlassU()">
+              <div class="dual-display" id="dualGGap2"></div>
+              <div class="error-msg" id="errGGap2"></div>
+            </div>
+            <div class="field" style="max-width:130px" id="gPane3Field">
+              <label>Pane 3 <span class="unit-hint insThickUnit">(mm)</span></label>
+              <input type="number" id="gPane3" min="1" step="0.5" value="4" oninput="calcGlassU()">
+              <div class="dual-display" id="dualGPane3"></div>
+              <div class="dual-display" id="lamStatus3" style="color:#666;font-style:italic"></div>
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:6px" id="paneTypeRow">
+            <div class="field" style="max-width:120px" id="gPaneType1Field">
+              <label>Pane 1 Type</label>
+              <select id="gPaneType1" onchange="onPaneTypeChange(1)">
+                <option value="mono">Monolithic</option>
+                <option value="lam">Laminated</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:120px;display:none" id="gInterlayerField1">
+              <label>PVB Interlayer</label>
+              <select id="gInterlayer1" onchange="updateLamStatus(1);calcGlassU()">
+                <option value="0.38">0.38 mm</option>
+                <option value="0.76" selected>0.76 mm</option>
+                <option value="1.14">1.14 mm</option>
+                <option value="1.54">1.54 mm</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:120px" id="gPaneType2Field">
+              <label>Pane 2 Type</label>
+              <select id="gPaneType2" onchange="onPaneTypeChange(2)">
+                <option value="mono">Monolithic</option>
+                <option value="lam">Laminated</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:120px;display:none" id="gInterlayerField2">
+              <label>PVB Interlayer</label>
+              <select id="gInterlayer2" onchange="updateLamStatus(2);calcGlassU()">
+                <option value="0.38">0.38 mm</option>
+                <option value="0.76" selected>0.76 mm</option>
+                <option value="1.14">1.14 mm</option>
+                <option value="1.54">1.54 mm</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:120px" id="gPaneType3Field">
+              <label>Pane 3 Type</label>
+              <select id="gPaneType3" onchange="onPaneTypeChange(3)">
+                <option value="mono">Monolithic</option>
+                <option value="lam">Laminated</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:120px;display:none" id="gInterlayerField3">
+              <label>PVB Interlayer</label>
+              <select id="gInterlayer3" onchange="updateLamStatus(3);calcGlassU()">
+                <option value="0.38">0.38 mm</option>
+                <option value="0.76" selected>0.76 mm</option>
+                <option value="1.14">1.14 mm</option>
+                <option value="1.54">1.54 mm</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="u-engineering-line" id="engLine_Glass"></div>
+        <div class="row">
+          <div class="field" style="max-width:160px">
+            <label>Glass U <span class="unit-hint uUnit">(W/m²·K)</span></label>
+            <input type="number" id="uGlass" min="0" step="0.01" value="2.80" oninput="onGlassUManualEdit()">
+            <div class="dual-display uDual" id="dualUGlass"></div>
+          </div>
+        </div>
+        <div class="glass-debug-controls">
+          <label><input type="checkbox" id="glassDebugToggle" onchange="toggleGlassDebug()"> Glass U Debug Mode</label>
+          <div class="field" style="margin:0;min-width:auto">
+            <label style="font-size:.78rem">Reference U (W/m²·K)</label>
+            <input type="number" id="glassRefU" min="0" step="0.01" placeholder="e.g. 1.10" oninput="updateGlassDebug()">
+          </div>
+          <div class="glass-debug-delta" id="glassDebugDelta"></div>
+        </div>
+        <div class="glass-debug-panel" id="glassDebugPanel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: INTERNAL GAINS -->
+<div class="tab-panel" id="tab-internal">
+  <div class="section">
+    <div class="section-body">
+      <strong style="font-size:.9rem;color:var(--primary)">People</strong>
+      <div class="row-grid-3" style="margin-top:6px">
+        <div class="field">
+          <label>Number of People</label>
+          <input type="number" id="numPeople" min="0" step="1" value="0" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Sensible Heat / Person (W)</label>
+          <input type="number" id="heatPerPerson" min="0" step="1" value="75" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Hours / Day (0-24)</label>
+          <input type="number" id="peopleHours" min="0" max="24" step="0.5" value="2" oninput="recalc()">
+          <div class="error-msg" id="errPeopleHours"></div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <strong style="font-size:.9rem;color:var(--primary)">Lighting (Continuous)</strong>
+      <div class="row-grid-3" style="margin-top:6px">
+        <div class="field">
+          <label>Input Mode</label>
+          <select id="lightContMode" onchange="onLightModeChange('Cont')">
+            <option value="W">Total Watts (W)</option>
+            <option value="Wm2">W/m²</option>
+            <option value="LED">LED Bar (Length × W/m × Dim)</option>
+          </select>
+        </div>
+        <div class="field" id="lightContPowerField">
+          <label id="lblLightCont">Power (W)</label>
+          <input type="number" id="lightContPower" min="0" step="1" value="0" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Hours / Day</label>
+          <input type="number" id="lightContHours" min="0" max="24" step="0.5" value="24" oninput="recalc()">
+          <div class="error-msg" id="errLightContHours"></div>
+        </div>
+      </div>
+      <div id="ledContFields" style="display:none">
+        <div class="row-grid-4" style="margin-top:4px">
+          <div class="field">
+            <label>LED Bar Length <span class="unit-hint lenUnit">(m)</span></label>
+            <input type="number" id="ledContLen" min="0" step="0.1" value="0" oninput="recalc()">
+            <div class="dual-display" id="dualLedContLen"></div>
+          </div>
+          <div class="field">
+            <label>Power Density (W/m)</label>
+            <input type="number" id="ledContWm" min="0" step="0.1" value="5" oninput="recalc()">
+            <div class="dual-display" id="dualLedContWm"></div>
+          </div>
+          <div class="field">
+            <label>Dim Level (%)</label>
+            <input type="number" id="ledContDim" min="0" max="100" step="1" value="50" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label>Calculated Power</label>
+            <div id="ledContCalcPower" style="font-weight:600;font-size:.88rem;margin-top:8px;color:var(--primary)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <strong style="font-size:.9rem;color:var(--primary)">Lighting (Intermittent)</strong>
+      <div class="row-grid-3" style="margin-top:6px">
+        <div class="field">
+          <label>Input Mode</label>
+          <select id="lightIntMode" onchange="onLightModeChange('Int')">
+            <option value="W">Total Watts (W)</option>
+            <option value="Wm2">W/m²</option>
+            <option value="LED">LED Bar (Length × W/m × Dim)</option>
+          </select>
+        </div>
+        <div class="field" id="lightIntPowerField">
+          <label id="lblLightInt">Power (W)</label>
+          <input type="number" id="lightIntPower" min="0" step="1" value="0" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Duty Cycle (%)</label>
+          <input type="number" id="lightIntDuty" min="0" max="100" step="1" value="25" oninput="recalc()">
+          <div class="error-msg" id="errLightIntDuty"></div>
+        </div>
+      </div>
+      <div id="ledIntFields" style="display:none">
+        <div class="row-grid-4" style="margin-top:4px">
+          <div class="field">
+            <label>LED Bar Length <span class="unit-hint lenUnit">(m)</span></label>
+            <input type="number" id="ledIntLen" min="0" step="0.1" value="0" oninput="recalc()">
+            <div class="dual-display" id="dualLedIntLen"></div>
+          </div>
+          <div class="field">
+            <label>Power Density (W/m)</label>
+            <input type="number" id="ledIntWm" min="0" step="0.1" value="5" oninput="recalc()">
+            <div class="dual-display" id="dualLedIntWm"></div>
+          </div>
+          <div class="field">
+            <label>Dim Level (%)</label>
+            <input type="number" id="ledIntDim" min="0" max="100" step="1" value="50" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label>Calculated Power</label>
+            <div id="ledIntCalcPower" style="font-weight:600;font-size:.88rem;margin-top:8px;color:var(--primary)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <strong style="font-size:.9rem;color:var(--primary)">Equipment / Other</strong>
+        <button class="btn btn-small btn-primary" onclick="addEquipRow()">+ Add Item</button>
+      </div>
+      <div class="equip-row" id="equipHeader" style="display:none;margin-bottom:2px">
+        <span style="font-size:.78rem;color:var(--text-light)">Name</span>
+        <span style="font-size:.78rem;color:var(--text-light)">Power (W)</span>
+        <span style="font-size:.78rem;color:var(--text-light)">Hours/Day</span>
+        <span></span>
+      </div>
+      <div id="equipContainer"></div>
+      <div class="separator"></div>
+      <strong style="font-size:.9rem;color:var(--primary)">Door Opening Loss</strong>
+      <div class="row-grid-3" style="margin-top:6px">
+        <div class="field">
+          <label>Openings per Hour</label>
+          <input type="number" id="doorOpenings" min="0" step="1" value="0" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Loss per Opening (Wh)</label>
+          <input type="number" id="doorLoss" min="0" step="0.1" value="10" oninput="recalc()">
+        </div>
+        <div class="field"></div>
+      </div>
+      <div class="separator"></div>
+      <strong style="font-size:.9rem;color:var(--primary)">Wine Bottle Turnover</strong>
+      <div class="row-grid-4" style="margin-top:6px">
+        <div class="field">
+          <label>Bottles per Day</label>
+          <input type="number" id="wineBottles" min="0" step="1" value="0" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Bottle Volume (L)</label>
+          <input type="number" id="wineVolume" min="0" step="0.01" value="0.75" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Incoming Temp <span class="unit-hint" id="unitWineIn">(°C)</span></label>
+          <input type="number" id="wineInTemp" step="0.1" oninput="this.dataset.autoSync='false';recalc()">
+          <div class="dual-display" id="dualWineIn"></div>
+        </div>
+        <div class="field">
+          <label>Target Temp <span class="unit-hint" id="unitWineTarget">(°C)</span></label>
+          <input type="number" id="wineTargetTemp" step="0.1" readonly style="background:#f0f0f0">
+          <div class="dual-display" id="dualWineTarget"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: SOLAR / SHGC -->
+<div class="tab-panel" id="tab-solar">
+  <div class="section">
+    <div class="section-body">
+      <p class="info-text">Solar heat gain through glass. SHGC is auto-linked to glass configuration (pane count, Low-E, laminated). Override per wall if needed.
+        <span class="tooltip-trigger" title="Q_solar = A_glass × I_wall × SHGC × F_exterior × F_interior. SHGC derived from glass config; irradiance from region/month/orientation.">&#9432;</span>
+      </p>
+
+      <div style="margin-bottom:10px">
+        <label style="font-size:.82rem;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="disregardSolar" checked onchange="recalc()"> Disregard Solar Heat Gain
+        </label>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="max-width:260px">
+          <label>Region Preset</label>
+          <select id="solarRegion" onchange="recalc()">
+            <option value="na_mid">North America (Mid-latitude)</option>
+            <option value="na_hot" selected>North America (Hot/Sunny)</option>
+            <option value="eu_mid">Europe (Mid-latitude)</option>
+            <option value="me_hot">Middle East (Hot/Sunny)</option>
+            <option value="ca_cont">Central Asia (Continental)</option>
+            <option value="ea_mid">East Asia (Mid-latitude)</option>
+            <option value="sa_humid">South Asia (Hot/Humid)</option>
+            <option value="au_mid">Australia (Mid-latitude)</option>
+            <option value="custom">Custom (manual irradiance)</option>
+          </select>
+        </div>
+        <div class="field" style="max-width:180px">
+          <label>Design Month</label>
+          <select id="solarMonth" onchange="recalc()">
+            <option value="0">January</option>
+            <option value="1">February</option>
+            <option value="2">March</option>
+            <option value="3">April</option>
+            <option value="4">May</option>
+            <option value="5">June</option>
+            <option value="6" selected>July</option>
+            <option value="7">August</option>
+            <option value="8">September</option>
+            <option value="9">October</option>
+            <option value="10">November</option>
+            <option value="11">December</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:6px">
+        <div class="field" style="flex:0 0 auto">
+          <label>Auto SHGC <span class="tooltip-trigger" title="Derived from glass config: base × Low-E modifier × laminated modifier. Clamped 0.15–0.90.">&#9432;</span></label>
+          <div id="autoShgcDisplay" style="font-weight:600;font-size:.88rem;color:var(--primary);margin-top:4px"></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+          <button class="btn btn-small btn-outline" onclick="applyAutoShgcAll()">Apply Auto SHGC to all</button>
+          <button class="btn btn-small btn-outline" onclick="applySameShgcAll()">Apply same SHGC to all</button>
+          <button class="btn btn-small btn-outline" onclick="applySameExtShading()">Same ext. shading to all</button>
+          <button class="btn btn-small btn-outline" onclick="applySameIntShading()">Same int. shading to all</button>
+        </div>
+      </div>
+
+      <div class="separator"></div>
+      <div class="wall-grid" id="solarWallGrid">
+        <div class="wall-card" id="solarWall1">
+          <h4>Glass Wall 1</h4>
+          <div class="field" style="margin-bottom:8px">
+            <label>Orientation</label>
+            <select id="solarOrient1" onchange="recalc()">
+              <option value="N">North (N)</option><option value="E">East (E)</option>
+              <option value="S" selected>South (S)</option><option value="W">West (W)</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>Irradiance (W/m²)</label>
+            <input type="number" id="solarIrr1" min="0" step="1" readonly style="background:#f0f0f0" oninput="recalc()">
+            <div class="dual-display" id="dualIrr1"></div>
+            <div class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="solarIrrOverride1" onchange="onIrrOverride(1)"><label for="solarIrrOverride1" style="font-size:.75rem">Manual override</label></div>
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>SHGC Mode</label>
+            <select id="shgcMode1" onchange="onShgcModeChange(1)">
+              <option value="auto" selected>Auto</option><option value="manual">Manual</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>SHGC</label>
+            <input type="number" id="shgcVal1" min="0" max="1" step="0.01" readonly style="background:#f0f0f0" oninput="recalc()">
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>Ext. Shading <span class="tooltip-trigger" title="Exterior shading factor (0–1):&#10;No shading: 1.00&#10;Light overhang: 0.70–0.90&#10;Moderate louvers: 0.40–0.70&#10;Deep overhang: 0.10–0.40&#10;Fully shaded: 0.05–0.15&#10;&#10;Exterior shading is generally more effective than interior shading.">&#9432;</span></label>
+            <input type="number" id="solarExtShade1" min="0" max="1" step="0.01" value="0.90" oninput="recalc()">
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <label>Int. Shading <span class="tooltip-trigger" title="Interior shading factor (0–1):&#10;No shading: 1.00&#10;Sheer curtain: 0.70–0.90&#10;Roller shade: 0.40–0.70&#10;Blackout: 0.10–0.40&#10;Interior shutters: 0.05–0.20&#10;&#10;Exterior shading is generally more effective than interior shading.">&#9432;</span></label>
+            <input type="number" id="solarIntShade1" min="0" max="1" step="0.01" value="0.75" oninput="recalc()">
+          </div>
+          <div class="dual-display" id="solarResult1" style="font-weight:600;color:var(--primary)"></div>
+        </div>
+
+        <div class="wall-card" id="solarWall2">
+          <h4>Glass Wall 2</h4>
+          <div class="field" style="margin-bottom:8px"><label>Orientation</label><select id="solarOrient2" onchange="recalc()"><option value="N">North (N)</option><option value="E">East (E)</option><option value="S" selected>South (S)</option><option value="W">West (W)</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>Irradiance (W/m²)</label><input type="number" id="solarIrr2" min="0" step="1" readonly style="background:#f0f0f0" oninput="recalc()"><div class="dual-display" id="dualIrr2"></div><div class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="solarIrrOverride2" onchange="onIrrOverride(2)"><label for="solarIrrOverride2" style="font-size:.75rem">Manual override</label></div></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC Mode</label><select id="shgcMode2" onchange="onShgcModeChange(2)"><option value="auto" selected>Auto</option><option value="manual">Manual</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC</label><input type="number" id="shgcVal2" min="0" max="1" step="0.01" readonly style="background:#f0f0f0" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Ext. Shading <span class="tooltip-trigger" title="Exterior shading factor (0–1):&#10;No shading: 1.00&#10;Light overhang: 0.70–0.90&#10;Moderate louvers: 0.40–0.70&#10;Deep overhang: 0.10–0.40&#10;Fully shaded: 0.05–0.15">&#9432;</span></label><input type="number" id="solarExtShade2" min="0" max="1" step="0.01" value="0.90" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Int. Shading <span class="tooltip-trigger" title="Interior shading factor (0–1):&#10;No shading: 1.00&#10;Sheer curtain: 0.70–0.90&#10;Roller shade: 0.40–0.70&#10;Blackout: 0.10–0.40&#10;Interior shutters: 0.05–0.20">&#9432;</span></label><input type="number" id="solarIntShade2" min="0" max="1" step="0.01" value="0.75" oninput="recalc()"></div>
+          <div class="dual-display" id="solarResult2" style="font-weight:600;color:var(--primary)"></div>
+        </div>
+
+        <div class="wall-card" id="solarWall3">
+          <h4>Glass Wall 3</h4>
+          <div class="field" style="margin-bottom:8px"><label>Orientation</label><select id="solarOrient3" onchange="recalc()"><option value="N">North (N)</option><option value="E">East (E)</option><option value="S" selected>South (S)</option><option value="W">West (W)</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>Irradiance (W/m²)</label><input type="number" id="solarIrr3" min="0" step="1" readonly style="background:#f0f0f0" oninput="recalc()"><div class="dual-display" id="dualIrr3"></div><div class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="solarIrrOverride3" onchange="onIrrOverride(3)"><label for="solarIrrOverride3" style="font-size:.75rem">Manual override</label></div></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC Mode</label><select id="shgcMode3" onchange="onShgcModeChange(3)"><option value="auto" selected>Auto</option><option value="manual">Manual</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC</label><input type="number" id="shgcVal3" min="0" max="1" step="0.01" readonly style="background:#f0f0f0" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Ext. Shading <span class="tooltip-trigger" title="Exterior shading factor (0–1):&#10;No shading: 1.00&#10;Light overhang: 0.70–0.90&#10;Moderate louvers: 0.40–0.70&#10;Deep overhang: 0.10–0.40&#10;Fully shaded: 0.05–0.15">&#9432;</span></label><input type="number" id="solarExtShade3" min="0" max="1" step="0.01" value="0.90" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Int. Shading <span class="tooltip-trigger" title="Interior shading factor (0–1):&#10;No shading: 1.00&#10;Sheer curtain: 0.70–0.90&#10;Roller shade: 0.40–0.70&#10;Blackout: 0.10–0.40&#10;Interior shutters: 0.05–0.20">&#9432;</span></label><input type="number" id="solarIntShade3" min="0" max="1" step="0.01" value="0.75" oninput="recalc()"></div>
+          <div class="dual-display" id="solarResult3" style="font-weight:600;color:var(--primary)"></div>
+        </div>
+
+        <div class="wall-card" id="solarWall4">
+          <h4>Glass Wall 4</h4>
+          <div class="field" style="margin-bottom:8px"><label>Orientation</label><select id="solarOrient4" onchange="recalc()"><option value="N">North (N)</option><option value="E">East (E)</option><option value="S" selected>South (S)</option><option value="W">West (W)</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>Irradiance (W/m²)</label><input type="number" id="solarIrr4" min="0" step="1" readonly style="background:#f0f0f0" oninput="recalc()"><div class="dual-display" id="dualIrr4"></div><div class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="solarIrrOverride4" onchange="onIrrOverride(4)"><label for="solarIrrOverride4" style="font-size:.75rem">Manual override</label></div></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC Mode</label><select id="shgcMode4" onchange="onShgcModeChange(4)"><option value="auto" selected>Auto</option><option value="manual">Manual</option></select></div>
+          <div class="field" style="margin-bottom:8px"><label>SHGC</label><input type="number" id="shgcVal4" min="0" max="1" step="0.01" readonly style="background:#f0f0f0" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Ext. Shading <span class="tooltip-trigger" title="Exterior shading factor (0–1):&#10;No shading: 1.00&#10;Light overhang: 0.70–0.90&#10;Moderate louvers: 0.40–0.70&#10;Deep overhang: 0.10–0.40&#10;Fully shaded: 0.05–0.15">&#9432;</span></label><input type="number" id="solarExtShade4" min="0" max="1" step="0.01" value="0.90" oninput="recalc()"></div>
+          <div class="field" style="margin-bottom:8px"><label>Int. Shading <span class="tooltip-trigger" title="Interior shading factor (0–1):&#10;No shading: 1.00&#10;Sheer curtain: 0.70–0.90&#10;Roller shade: 0.40–0.70&#10;Blackout: 0.10–0.40&#10;Interior shutters: 0.05–0.20">&#9432;</span></label><input type="number" id="solarIntShade4" min="0" max="1" step="0.01" value="0.75" oninput="recalc()"></div>
+          <div class="dual-display" id="solarResult4" style="font-weight:600;color:var(--primary)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: RESULTS -->
+<div class="tab-panel" id="tab-results">
+  <div class="section">
+    <div class="section-body" id="resultsBody">
+      <div id="validationSummary" style="display:none;color:var(--error);font-weight:600;margin-bottom:12px;padding:10px;background:#fdf2f2;border-radius:5px"></div>
+      <table class="results-table" id="resultsTable">
+        <thead>
+          <tr>
+            <th style="width:40%">Component</th>
+            <th style="width:30%">Watts (W)</th>
+            <th style="width:30%">BTU/h</th>
+          </tr>
+        </thead>
+        <tbody id="resultsTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="copy-toast" id="copyToast">Summary copied to clipboard!</div>
+
+<script>
+const W_TO_BTU = 3.412141633;
+const U_SI_TO_IMP = 0.1761101838;
+const M_TO_FT = 3.28084;
+const SQM_TO_SQFT = 10.7639;
+
+let unitMode = 'metric';
+let equipRows = [];
+let equipId = 0;
+
+const allSurfKeys = ['Floor','Ceiling','Wall1','Wall2','Wall3','Wall4','Glass1','Glass2','Glass3','Glass4'];
+let surfManual = {};
+allSurfKeys.forEach(k => surfManual[k] = false);
+
+const INS_MATERIALS = [
+  { id:'none',  name:'None',                        k:null  },
+  { id:'xps',   name:'XPS (extruded polystyrene)',   k:0.034 },
+  { id:'eps',   name:'EPS (expanded polystyrene)',   k:0.038 },
+  { id:'pir',   name:'PIR board',                    k:0.022 },
+  { id:'pu',    name:'PU spray foam (closed-cell)',  k:0.024 },
+  { id:'stone', name:'Mineral wool / Stone wool',    k:0.035 },
+  { id:'fiber', name:'Fiberglass batt',              k:0.040 },
+  { id:'aero',  name:'Aerogel blanket',              k:0.015 },
+  { id:'custom',name:'Custom',                       k:null  }
+];
+
+const BASE_ASSEMBLIES = {
+  Floor: [
+    { id:'concrete', name:'Concrete slab',                   type:'solid', k:1.40, defThick:200 },
+    { id:'ply_air_ply_floor', name:'Plywood-Air Cavity-Plywood Floor', type:'sandwich_floor', kLayer:0.13, defT1:18, defCav:90, defT3:18 },
+    { id:'plywood', name:'Plywood layer (single)',           type:'solid', k:0.13, defThick:18 },
+    { id:'custom',  name:'Custom (manual k)',                type:'custom', defK:1.40, defThick:200 }
+  ],
+  Ceiling: [
+    { id:'concrete', name:'Concrete slab',                   type:'solid', k:1.40, defThick:200 },
+    { id:'block',    name:'Concrete block (CMU)',             type:'solid', k:1.05, defThick:200 },
+    { id:'ply_air_ply', name:'Plywood-Air Cavity-Plywood',   type:'sandwich', kLayer:0.13, defT1:18, defCav:90 },
+    { id:'drywall_cav', name:'Drywall (air cavity, both sides)', type:'sandwich', kLayer:0.25, defT1:12.5, defCav:90 },
+    { id:'custom',  name:'Custom (manual k)',                type:'custom', defK:1.40, defThick:200 }
+  ],
+  Walls: [
+    { id:'concrete', name:'Concrete (Gross)',                type:'solid', k:1.40, defThick:200 },
+    { id:'brick',    name:'Brick',                           type:'solid', k:0.80, defThick:220 },
+    { id:'block',    name:'Concrete block (CMU)',            type:'solid', k:1.05, defThick:200 },
+    { id:'stone_wall', name:'Stone',                         type:'solid', k:2.30, defThick:300 },
+    { id:'ytong',    name:'Aerated Concrete (Ytong)',        type:'solid', k:0.16, defThick:200 },
+    { id:'plaster',  name:'Plaster',                         type:'solid', k:0.57, defThick:15 },
+    { id:'plywood',  name:'Plywood',                         type:'solid', k:0.13, defThick:18 },
+    { id:'ply_air_ply', name:'Plywood-Air Cavity-Plywood',   type:'sandwich', kLayer:0.13, defT1:18, defCav:90 },
+    { id:'drywall_cav', name:'Drywall (air cavity, both sides)', type:'sandwich', kLayer:0.25, defT1:12.5, defCav:90 },
+    { id:'custom',  name:'Custom (manual k)',                type:'custom', defK:1.40, defThick:200 }
+  ]
+};
+
+const Rsi = 0.13;
+const Rse = 0.04;
+
+const solidSurfaces = ['Floor','Ceiling','Walls'];
+const uAutoMode = { Floor: true, Ceiling: true, Walls: true };
+
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const tabs = ['project','geometry','temperatures','solidU','glass','internal','solar','results'];
+  const idx = tabs.indexOf(name);
+  if(idx >= 0) document.querySelectorAll('.tab-bar button')[idx].classList.add('active');
+  if(name === 'results') recalc();
+}
+
+function airCavityR(cavMM){
+  const cav = Math.max(10, Math.min(300, cavMM));
+  if(cav <= 25) return 0.17;
+  return 0.18;
+}
+
+function getInputMM(id){
+  let v = parseFloat(document.getElementById(id).value);
+  if(isNaN(v) || v < 0) v = 0;
+  if(unitMode === 'imperial') v = v * 25.4;
+  return v;
+}
+
+function populateMaterialDropdowns(){
+  solidSurfaces.forEach(s => {
+    const baseSel = document.getElementById('base'+s);
+    BASE_ASSEMBLIES[s].forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.name;
+      baseSel.appendChild(opt);
+    });
+
+    const insSel = document.getElementById('ins'+s);
+    INS_MATERIALS.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      insSel.appendChild(opt);
+    });
+    insSel.value = 'none';
+  });
+
+  document.getElementById('baseFloor').value = 'concrete';
+  document.getElementById('baseCeiling').value = 'concrete';
+  document.getElementById('baseWalls').value = 'drywall_cav';
+  onBaseChange('Floor'); onBaseChange('Ceiling'); onBaseChange('Walls');
+}
+
+function showBaseFields(surface){
+  const baseSel = document.getElementById('base'+surface);
+  const baseId = baseSel.value;
+  const assemblies = BASE_ASSEMBLIES[surface];
+  const asm = assemblies.find(a => a.id === baseId);
+
+  const f1 = document.getElementById('baseThick1Field_'+surface);
+  const f2 = document.getElementById('baseThick2Field_'+surface);
+  const f3 = document.getElementById('baseThick3Field_'+surface);
+  const fk = document.getElementById('baseCustomKField_'+surface);
+
+  f1.style.display = 'none'; f2.style.display = 'none'; f3.style.display = 'none'; fk.style.display = 'none';
+
+  if(!asm) return;
+
+  if(asm.type === 'solid'){
+    f1.style.display = '';
+    document.getElementById('lblBaseThick1_'+surface).innerHTML = 'Thickness <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+  } else if(asm.type === 'sandwich'){
+    f1.style.display = '';
+    document.getElementById('lblBaseThick1_'+surface).innerHTML = 'Layer <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    f2.style.display = '';
+    document.getElementById('lblBaseThick2_'+surface).innerHTML = 'Cavity <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+  } else if(asm.type === 'sandwich_floor'){
+    f1.style.display = '';
+    document.getElementById('lblBaseThick1_'+surface).innerHTML = 'Top ply <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    f2.style.display = '';
+    document.getElementById('lblBaseThick2_'+surface).innerHTML = 'Cavity <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    f3.style.display = '';
+    document.getElementById('lblBaseThick3_'+surface).innerHTML = 'Bottom ply <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+  } else if(asm.type === 'custom'){
+    f1.style.display = '';
+    document.getElementById('lblBaseThick1_'+surface).innerHTML = 'Thickness <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    fk.style.display = '';
+  }
+}
+
+function onBaseChange(surface){
+  const baseSel = document.getElementById('base'+surface);
+  const baseId = baseSel.value;
+  const assemblies = BASE_ASSEMBLIES[surface];
+  const asm = assemblies.find(a => a.id === baseId);
+  if(!asm) return;
+
+  if(asm.type === 'solid'){
+    const defT = unitMode==='imperial' ? asm.defThick/25.4 : asm.defThick;
+    document.getElementById('baseThick1_'+surface).value = fmt(defT, unitMode==='imperial'?2:0);
+  } else if(asm.type === 'sandwich'){
+    const defT1 = unitMode==='imperial' ? asm.defT1/25.4 : asm.defT1;
+    const defCav = unitMode==='imperial' ? asm.defCav/25.4 : asm.defCav;
+    document.getElementById('baseThick1_'+surface).value = fmt(defT1, unitMode==='imperial'?2:1);
+    document.getElementById('baseThick2_'+surface).value = fmt(defCav, unitMode==='imperial'?2:0);
+  } else if(asm.type === 'sandwich_floor'){
+    const defT1 = unitMode==='imperial' ? asm.defT1/25.4 : asm.defT1;
+    const defCav = unitMode==='imperial' ? asm.defCav/25.4 : asm.defCav;
+    const defT3 = unitMode==='imperial' ? asm.defT3/25.4 : asm.defT3;
+    document.getElementById('baseThick1_'+surface).value = fmt(defT1, unitMode==='imperial'?2:0);
+    document.getElementById('baseThick2_'+surface).value = fmt(defCav, unitMode==='imperial'?2:0);
+    document.getElementById('baseThick3_'+surface).value = fmt(defT3, unitMode==='imperial'?2:0);
+  } else if(asm.type === 'custom'){
+    const defT = unitMode==='imperial' ? asm.defThick/25.4 : asm.defThick;
+    document.getElementById('baseThick1_'+surface).value = fmt(defT, unitMode==='imperial'?2:0);
+    document.getElementById('baseCustomK_'+surface).value = asm.defK;
+  }
+
+  showBaseFields(surface);
+  uAutoMode[surface] = true;
+  document.getElementById('customNote_'+surface).style.display = 'none';
+  calcSolidU(surface);
+}
+
+function calcBaseR(surface){
+  const baseSel = document.getElementById('base'+surface);
+  const baseId = baseSel.value;
+  const assemblies = BASE_ASSEMBLIES[surface];
+  const asm = assemblies.find(a => a.id === baseId);
+  if(!asm) return { R: 0, desc: '' };
+
+  if(asm.type === 'solid'){
+    const tMM = getInputMM('baseThick1_'+surface);
+    const R = (tMM/1000) / asm.k;
+    return { R, desc: asm.name+': '+fmt(tMM,0)+'mm, k='+asm.k+', R='+fmt(R,3) };
+  }
+  if(asm.type === 'sandwich'){
+    const t1MM = getInputMM('baseThick1_'+surface);
+    const cavMM = getInputMM('baseThick2_'+surface);
+    const R1 = (t1MM/1000) / asm.kLayer;
+    const R2 = R1;
+    const Rcav = airCavityR(cavMM);
+    const R = R1 + Rcav + R2;
+    return { R, desc: asm.name+': 2x'+fmt(t1MM,1)+'mm (k='+asm.kLayer+'), cavity '+fmt(cavMM,0)+'mm (R='+fmt(Rcav,3)+'), R_base='+fmt(R,3) };
+  }
+  if(asm.type === 'sandwich_floor'){
+    const t1MM = getInputMM('baseThick1_'+surface);
+    const cavMM = getInputMM('baseThick2_'+surface);
+    const t3MM = getInputMM('baseThick3_'+surface);
+    const R1 = (t1MM/1000) / asm.kLayer;
+    const Rcav = airCavityR(cavMM);
+    const R3 = (t3MM/1000) / asm.kLayer;
+    const R = R1 + Rcav + R3;
+    return { R, desc: asm.name+': top '+fmt(t1MM,0)+'mm + cavity '+fmt(cavMM,0)+'mm (R='+fmt(Rcav,3)+') + btm '+fmt(t3MM,0)+'mm, k='+asm.kLayer+', R_base='+fmt(R,3) };
+  }
+  if(asm.type === 'custom'){
+    const tMM = getInputMM('baseThick1_'+surface);
+    const k = parseFloat(document.getElementById('baseCustomK_'+surface).value) || 1.40;
+    const R = (tMM/1000) / k;
+    return { R, desc: 'Custom: '+fmt(tMM,0)+'mm, k='+fmt(k,3)+', R='+fmt(R,3) };
+  }
+  return { R: 0, desc: '' };
+}
+
+function calcInsR(surface){
+  const insSel = document.getElementById('ins'+surface);
+  const insId = insSel.value;
+  if(insId === 'none') return { R: 0, desc: 'None' };
+  const mat = INS_MATERIALS.find(m => m.id === insId);
+  if(!mat) return { R: 0, desc: 'None' };
+  let k = mat.k;
+  if(insId === 'custom'){
+    k = parseFloat(document.getElementById('insCustomK_'+surface).value) || 0.035;
+  }
+  if(!k || k <= 0) return { R: 0, desc: 'Custom: invalid k' };
+  const tMM = getInputMM('insThick_'+surface);
+  if(tMM <= 0) return { R: 0, desc: mat.name+': 0mm' };
+  const R = (tMM/1000) / k;
+  return { R, desc: mat.name+': '+fmt(tMM,0)+'mm, k='+fmt(k,3)+', R='+fmt(R,3) };
+}
+
+function applyDisregardBaseUI(surface){
+  const disregard = document.getElementById('disregardBase_'+surface).checked;
+  const row = document.getElementById('baseRow_'+surface);
+  const sel = document.getElementById('base'+surface);
+  const inputs = row.querySelectorAll('input[type="number"]');
+  if(disregard){
+    row.style.opacity = '0.35';
+    row.style.pointerEvents = 'none';
+    sel.disabled = true;
+    inputs.forEach(inp => inp.disabled = true);
+  } else {
+    row.style.opacity = '';
+    row.style.pointerEvents = '';
+    sel.disabled = false;
+    inputs.forEach(inp => inp.disabled = false);
+  }
+}
+
+function onDisregardBaseChange(surface){
+  applyDisregardBaseUI(surface);
+  calcSolidU(surface);
+}
+
+function calcSolidU(surface){
+  if(!uAutoMode[surface]) return;
+  const disregardBase = document.getElementById('disregardBase_'+surface).checked;
+  const baseResult = calcBaseR(surface);
+  const insResult = calcInsR(surface);
+  const R_base = disregardBase ? 0 : baseResult.R;
+  const R_total = Rsi + R_base + insResult.R + Rse;
+  let U_est = R_total > 0 ? (1 / R_total) : 99;
+  U_est = Math.round(U_est * 100) / 100;
+  const displayU = unitMode === 'imperial' ? uSiToImp(U_est) : U_est;
+  document.getElementById('u'+surface).value = fmt(displayU, 2);
+  const engEl = document.getElementById('engLine_'+surface);
+  const uSI = unitMode === 'imperial' ? uImpToSi(displayU) : U_est;
+  const baseDesc = disregardBase ? 'Base Assembly: Disregarded' : 'Base: '+baseResult.desc;
+  engEl.textContent = baseDesc+'  |  Ins: '+insResult.desc+'  |  Rsi='+Rsi+' Rse='+Rse+'  |  R_total='+fmt(R_total,3)+' m2K/W  |  U='+fmt(uSI,2)+' W/m2K | '+fmt(uSiToImp(uSI),3)+' BTU/hft2F';
+  document.getElementById('customNote_'+surface).style.display = 'none';
+  recalc();
+}
+
+function onInsChange(surface){
+  const insId = document.getElementById('ins'+surface).value;
+  const thickField = document.getElementById('insThickField_'+surface);
+  const kField = document.getElementById('insCustomKField_'+surface);
+  if(insId === 'none'){
+    thickField.style.display = 'none';
+    kField.style.display = 'none';
+    document.getElementById('insThick_'+surface).value = 0;
+  } else {
+    thickField.style.display = '';
+    kField.style.display = insId === 'custom' ? '' : 'none';
+    if(parseFloat(document.getElementById('insThick_'+surface).value) === 0){
+      const defThick = unitMode==='imperial' ? 2 : 50;
+      document.getElementById('insThick_'+surface).value = defThick;
+    }
+  }
+  uAutoMode[surface] = true;
+  document.getElementById('customNote_'+surface).style.display = 'none';
+  calcSolidU(surface);
+}
+
+function onUManualEdit(surface){
+  uAutoMode[surface] = false;
+  document.getElementById('customNote_'+surface).style.display = '';
+  const engEl = document.getElementById('engLine_'+surface);
+  const disregardBase = document.getElementById('disregardBase_'+surface).checked;
+  const baseResult = calcBaseR(surface);
+  const insResult = calcInsR(surface);
+  const R_base = disregardBase ? 0 : baseResult.R;
+  const R_total = Rsi + R_base + insResult.R + Rse;
+  const baseDesc = disregardBase ? 'Base Assembly: Disregarded' : 'Base: '+baseResult.desc;
+  engEl.textContent = 'Computed (reference): '+baseDesc+'  |  Ins: '+insResult.desc+'  |  R_total='+fmt(R_total,3)+' m2K/W';
+  recalc();
+}
+
+function updateLamStatus(n){
+  const type = document.getElementById('gPaneType'+n).value;
+  const el = document.getElementById('lamStatus'+n);
+  if(type === 'lam'){
+    const il = document.getElementById('gInterlayer'+n).value;
+    el.textContent = 'Laminated · ' + il + ' mm PVB';
+  } else {
+    el.textContent = '';
+  }
+}
+
+function onPaneTypeChange(n){
+  const type = document.getElementById('gPaneType'+n).value;
+  const ilField = document.getElementById('gInterlayerField'+n);
+  ilField.style.display = type === 'lam' ? '' : 'none';
+  updateLamStatus(n);
+  calcGlassU();
+}
+
+function resetPaneTypes(){
+  [1,2,3].forEach(n => {
+    document.getElementById('gPaneType'+n).value = 'mono';
+    document.getElementById('gInterlayer'+n).value = '0.76';
+    document.getElementById('gInterlayerField'+n).style.display = 'none';
+    document.getElementById('lamStatus'+n).textContent = '';
+  });
+}
+
+function showPaneTypeFields(config){
+  const pt1 = document.getElementById('gPaneType1Field');
+  const pt2 = document.getElementById('gPaneType2Field');
+  const pt3 = document.getElementById('gPaneType3Field');
+  const row = document.getElementById('paneTypeRow');
+  if(config === 'single'){
+    row.style.display = '';
+    pt1.style.display = '';
+    document.getElementById('gPaneType1Field').querySelector('label').textContent = 'Pane Type';
+    pt2.style.display = 'none'; pt3.style.display = 'none';
+    document.getElementById('gInterlayerField2').style.display = 'none';
+    document.getElementById('gInterlayerField3').style.display = 'none';
+  } else if(config === 'double'){
+    row.style.display = '';
+    pt1.style.display = ''; pt2.style.display = ''; pt3.style.display = 'none';
+    document.getElementById('gPaneType1Field').querySelector('label').textContent = 'Pane 1 Type';
+    document.getElementById('gPaneType2Field').querySelector('label').textContent = 'Pane 2 Type';
+    document.getElementById('gInterlayerField3').style.display = 'none';
+  } else if(config === 'triple'){
+    row.style.display = '';
+    pt1.style.display = ''; pt2.style.display = ''; pt3.style.display = '';
+    document.getElementById('gPaneType1Field').querySelector('label').textContent = 'Pane 1 Type';
+    document.getElementById('gPaneType2Field').querySelector('label').textContent = 'Pane 2 Type';
+    document.getElementById('gPaneType3Field').querySelector('label').textContent = 'Pane 3 Type';
+  } else {
+    row.style.display = 'none';
+  }
+  [1,2,3].forEach(n => {
+    const type = document.getElementById('gPaneType'+n).value;
+    const vis = document.getElementById('gPaneType'+n+'Field').style.display !== 'none';
+    document.getElementById('gInterlayerField'+n).style.display = (vis && type === 'lam') ? '' : 'none';
+  });
+}
+
+function onGlazeConfigChange(){
+  const config = document.getElementById('glazeConfig').value;
+  const p1 = document.getElementById('gpane1Field');
+  const g1 = document.getElementById('gGap1Field');
+  const p2 = document.getElementById('gPane2Field');
+  const g2 = document.getElementById('gGap2Field');
+  const p3 = document.getElementById('gPane3Field');
+  const inputs = document.getElementById('glazeInputs');
+  const lowEField = document.getElementById('lowEField');
+  const lowESel = document.getElementById('lowECoating');
+
+  if(config === 'single'){
+    p1.style.display = ''; g1.style.display = 'none'; p2.style.display = 'none';
+    g2.style.display = 'none'; p3.style.display = 'none';
+    document.getElementById('lblGPane1').innerHTML = 'Pane thickness <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    inputs.style.display = '';
+    lowEField.style.display = 'none';
+    lowESel.value = 'none';
+  } else if(config === 'double'){
+    p1.style.display = ''; g1.style.display = ''; p2.style.display = '';
+    g2.style.display = 'none'; p3.style.display = 'none';
+    document.getElementById('lblGPane1').innerHTML = 'Pane 1 <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    document.getElementById('lblGPane2').innerHTML = 'Pane 2 <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    inputs.style.display = '';
+    lowEField.style.display = '';
+    if(lowESel.value === 'two') lowESel.value = 'one';
+    lowESel.querySelector('option[value="two"]').style.display = 'none';
+  } else if(config === 'triple'){
+    p1.style.display = ''; g1.style.display = ''; p2.style.display = '';
+    g2.style.display = ''; p3.style.display = '';
+    document.getElementById('lblGPane1').innerHTML = 'Pane 1 <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    document.getElementById('lblGPane2').innerHTML = 'Pane 2 <span class="unit-hint insThickUnit">' + (unitMode==='metric'?'(mm)':'(in)') + '</span>';
+    inputs.style.display = '';
+    lowEField.style.display = '';
+    lowESel.querySelector('option[value="two"]').style.display = '';
+  } else {
+    inputs.style.display = 'none';
+    lowEField.style.display = 'none';
+  }
+  showPaneTypeFields(config);
+  document.getElementById('engLine_Glass').textContent = '';
+  if(config !== 'custom') calcGlassU();
+}
+
+function getLamInfo(paneNum){
+  const type = document.getElementById('gPaneType'+paneNum).value;
+  if(type !== 'lam') return null;
+  const il = document.getElementById('gInterlayer'+paneNum).value;
+  return { interlayer: parseFloat(il) };
+}
+
+function getGlassUTemps(){
+  const useEnv = document.getElementById('glazeUseEnvTemps').checked;
+  let TiC, ToC;
+  if(useEnv){
+    TiC = getVal('intTemp');
+    ToC = getVal('extTemp');
+    if(unitMode === 'imperial'){ TiC = fToC(TiC); ToC = fToC(ToC); }
+    if(isNaN(TiC)) TiC = 20;
+    if(isNaN(ToC)) ToC = 0;
+  } else {
+    TiC = 20; ToC = 0;
+  }
+  return { TiC, ToC, TmK: (TiC + ToC) / 2 + 273.15 };
+}
+
+function buildPaneLayers(paneNum, paneMM, kGlass, kPvb){
+  const lam = getLamInfo(paneNum);
+  const layers = [];
+  if(lam){
+    const tPly = paneMM / 2;
+    const tPvb = lam.interlayer;
+    layers.push({ label: 'Pane '+paneNum+' ply A (glass)', tmm: tPly, k: kGlass, R: (tPly/1000)/kGlass });
+    layers.push({ label: 'Pane '+paneNum+' PVB', tmm: tPvb, k: kPvb, R: (tPvb/1000)/kPvb });
+    layers.push({ label: 'Pane '+paneNum+' ply B (glass)', tmm: tPly, k: kGlass, R: (tPly/1000)/kGlass });
+  } else {
+    layers.push({ label: 'Pane '+paneNum+' (glass)', tmm: paneMM, k: kGlass, R: (paneMM/1000)/kGlass });
+  }
+  return { layers, lam };
+}
+
+function computeArgonGap(gapMM, eps1, eps2, TmK, dT){
+  const sigma = 5.670374419e-8;
+  const k_ar = 0.016;
+  const nu_ar = 2.2e-5;
+  const alpha_ar = 2.0e-5;
+  const Pr = nu_ar / alpha_ar;
+  const g_acc = 9.81;
+  const d = Math.max(gapMM, 1) / 1000;
+  const beta = 1 / TmK;
+  const absDT = Math.max(Math.abs(dT), 0.01);
+  const Ra = g_acc * beta * absDT * Math.pow(d, 3) / (nu_ar * alpha_ar);
+  let Nu;
+  if(Ra <= 1e4) Nu = 1.0;
+  else Nu = Math.min(4.0, 0.42 * Math.pow(Ra, 0.25) * Math.pow(Pr, 0.012));
+  const h_c = Nu * k_ar / d;
+  const epsEff = 1 / ((1/eps1) + (1/eps2) - 1);
+  const h_r = 4 * sigma * Math.pow(TmK, 3) * epsEff;
+  const h_total = h_c + h_r;
+  const R_gap = 1 / h_total;
+  return { d, eps1, eps2, epsEff, h_r, Ra, Nu, h_c, h_total, R_gap, k_ar };
+}
+
+function getGapEmissivities(config, lowE, gapIndex){
+  const EPS_CLEAR = 0.84;
+  const EPS_LOWE = 0.04;
+  if(lowE === 'none') return [EPS_CLEAR, EPS_CLEAR];
+  if(config === 'double'){
+    if(lowE === 'one') return [EPS_CLEAR, EPS_LOWE];
+    return [EPS_LOWE, EPS_LOWE];
+  }
+  if(config === 'triple'){
+    if(lowE === 'one'){
+      if(gapIndex === 0) return [EPS_CLEAR, EPS_LOWE];
+      return [EPS_CLEAR, EPS_CLEAR];
+    }
+    if(lowE === 'two'){
+      if(gapIndex === 0) return [EPS_CLEAR, EPS_LOWE];
+      return [EPS_LOWE, EPS_CLEAR];
+    }
+  }
+  return [EPS_CLEAR, EPS_CLEAR];
+}
+
+function calcGlassU(){
+  const config = document.getElementById('glazeConfig').value;
+  if(config === 'custom') return;
+  document.getElementById('errGGap1').textContent = '';
+  document.getElementById('errGGap2').textContent = '';
+
+  const kGlass = 1.0;
+  const kPvb = 0.20;
+  const hi = 8.0;
+  const ho = 25.0;
+  const Rsi_g = 1 / hi;
+  const Rse_g = 1 / ho;
+  const lowE = document.getElementById('lowECoating').value;
+  const temps = getGlassUTemps();
+  const dT = temps.TiC - temps.ToC;
+
+  let p1mm = parseFloat(document.getElementById('gPane1').value) || 4;
+  if(unitMode === 'imperial') p1mm = p1mm * 25.4;
+  const pane1 = buildPaneLayers(1, p1mm, kGlass, kPvb);
+
+  if(config === 'single'){
+    let R_total = Rsi_g + Rse_g;
+    pane1.layers.forEach(l => R_total += l.R);
+    let U = 1 / R_total;
+    U = Math.round(U * 100) / 100;
+    setGlassUResult(U, config, lowE, R_total);
+    return;
+  }
+
+  let gap1mm = parseFloat(document.getElementById('gGap1').value) || 12;
+  if(unitMode === 'imperial') gap1mm = gap1mm * 25.4;
+  if(gap1mm < 6){ gap1mm = 6; document.getElementById('errGGap1').textContent = 'Min 6 mm'; }
+  if(gap1mm > 20){ gap1mm = 20; document.getElementById('errGGap1').textContent = 'Max 20 mm'; }
+  let p2mm = parseFloat(document.getElementById('gPane2').value) || 4;
+  if(unitMode === 'imperial') p2mm = p2mm * 25.4;
+  const pane2 = buildPaneLayers(2, p2mm, kGlass, kPvb);
+
+  const [e1g1, e2g1] = getGapEmissivities(config, lowE, 0);
+  const gap1 = computeArgonGap(gap1mm, e1g1, e2g1, temps.TmK, dT);
+
+  if(config === 'double'){
+    let R_total = Rsi_g + Rse_g + gap1.R_gap;
+    pane1.layers.forEach(l => R_total += l.R);
+    pane2.layers.forEach(l => R_total += l.R);
+    let U = Math.round((1 / R_total) * 100) / 100;
+    setGlassUResult(U, config, lowE, R_total);
+    return;
+  }
+
+  let gap2mm = parseFloat(document.getElementById('gGap2').value) || 12;
+  if(unitMode === 'imperial') gap2mm = gap2mm * 25.4;
+  if(gap2mm < 6){ gap2mm = 6; document.getElementById('errGGap2').textContent = 'Min 6 mm'; }
+  if(gap2mm > 20){ gap2mm = 20; document.getElementById('errGGap2').textContent = 'Max 20 mm'; }
+  let p3mm = parseFloat(document.getElementById('gPane3').value) || 4;
+  if(unitMode === 'imperial') p3mm = p3mm * 25.4;
+  const pane3 = buildPaneLayers(3, p3mm, kGlass, kPvb);
+
+  const [e1g2, e2g2] = getGapEmissivities(config, lowE, 1);
+  const gap2 = computeArgonGap(gap2mm, e1g2, e2g2, temps.TmK, dT);
+
+  let R_total = Rsi_g + Rse_g + gap1.R_gap + gap2.R_gap;
+  pane1.layers.forEach(l => R_total += l.R);
+  pane2.layers.forEach(l => R_total += l.R);
+  pane3.layers.forEach(l => R_total += l.R);
+  let U = Math.round((1 / R_total) * 100) / 100;
+  setGlassUResult(U, config, lowE, R_total);
+}
+
+function setGlassUResult(U_si, config, lowE, R_total){
+  const displayU = unitMode === 'imperial' ? uSiToImp(U_si) : U_si;
+  document.getElementById('uGlass').value = fmt(displayU, 2);
+  const engEl = document.getElementById('engLine_Glass');
+  const lowELabel = lowE === 'none' ? 'No Low-E' : lowE === 'one' ? 'Low-E x1' : 'Low-E x2';
+  const configLabel = config === 'single' ? 'Single' : config === 'double' ? 'Double IGU' : 'Triple IGU';
+  const paneCount = config === 'single' ? 1 : config === 'triple' ? 3 : 2;
+  const lamParts = [];
+  for(let n = 1; n <= paneCount; n++){
+    const li = getLamInfo(n);
+    if(li) lamParts.push('P'+n+' '+li.interlayer+'mm PVB');
+  }
+  const lamLabel = lamParts.length > 0 ? '  |  Lam: '+lamParts.join(', ') : '';
+  engEl.textContent = configLabel+'  |  '+lowELabel+'  |  R_total='+fmt(R_total,3)+' m2K/W'+lamLabel+'  |  U='+fmt(U_si,2)+' W/m2K | '+fmt(uSiToImp(U_si),3)+' BTU/hft2F';
+  updateGlassDebug();
+  recalc();
+}
+
+function toggleGlassDebug(){
+  const on = document.getElementById('glassDebugToggle').checked;
+  const panel = document.getElementById('glassDebugPanel');
+  if(on){ panel.classList.add('visible'); updateGlassDebug(); }
+  else { panel.classList.remove('visible'); }
+}
+
+function updateGlassDebug(){
+  const panel = document.getElementById('glassDebugPanel');
+  const deltaEl = document.getElementById('glassDebugDelta');
+  if(!document.getElementById('glassDebugToggle').checked){ deltaEl.textContent = ''; return; }
+
+  const config = document.getElementById('glazeConfig').value;
+  const lowE = document.getElementById('lowECoating').value;
+  const kGlass = 1.0;
+  const kPvb = 0.20;
+  const hi = 8.0;
+  const ho = 25.0;
+  const Rsi_g = 1 / hi;
+  const Rse_g = 1 / ho;
+  const f = (v) => v.toFixed(4);
+  const dr = (lbl, val) => '<div class="dbg-row"><span class="dbg-label">'+lbl+'</span><span class="dbg-val">'+val+'</span></div>';
+  let html = '';
+
+  if(config === 'custom'){
+    const finalU = parseFloat(document.getElementById('uGlass').value) || 0;
+    const finalU_si = unitMode === 'imperial' ? finalU / 0.1761101838 : finalU;
+    html += '<h4>Custom Mode</h4>';
+    html += dr('Mode','Custom — no intermediate values available');
+    html += '<h4>Summary</h4>';
+    html += dr('Final U (W/m²·K)', f(finalU_si));
+    html += dr('Final U (BTU/h·ft²·°F)', f(uSiToImp(finalU_si)));
+    panel.innerHTML = html;
+    updateGlassRefDelta(finalU_si);
+    return;
+  }
+
+  const temps = getGlassUTemps();
+  const dT = temps.TiC - temps.ToC;
+  const useEnv = document.getElementById('glazeUseEnvTemps').checked;
+
+  html += '<h4>Boundary Conditions</h4>';
+  html += dr('Source', useEnv ? 'Environmental Conditions' : 'Standard test (EN 673)');
+  html += dr('Ti (°C)', f(temps.TiC));
+  html += dr('To (°C)', f(temps.ToC));
+  html += dr('T_mean (K)', f(temps.TmK));
+  html += dr('ΔT (K)', f(dT));
+
+  html += '<h4>Surface Film Coefficients</h4>';
+  html += dr('hi (W/m²·K)', f(hi));
+  html += dr('ho (W/m²·K)', f(ho));
+  html += dr('Rsi = 1/hi (m²·K/W)', f(Rsi_g));
+  html += dr('Rse = 1/ho (m²·K/W)', f(Rse_g));
+
+  let p1mm = parseFloat(document.getElementById('gPane1').value) || 4;
+  if(unitMode === 'imperial') p1mm = p1mm * 25.4;
+  const pane1 = buildPaneLayers(1, p1mm, kGlass, kPvb);
+  const allPaneLayers = [...pane1.layers];
+  const gapResults = [];
+
+  if(config === 'double' || config === 'triple'){
+    let gap1mm = parseFloat(document.getElementById('gGap1').value) || 12;
+    if(unitMode === 'imperial') gap1mm = gap1mm * 25.4;
+    gap1mm = Math.max(6, Math.min(20, gap1mm));
+    let p2mm = parseFloat(document.getElementById('gPane2').value) || 4;
+    if(unitMode === 'imperial') p2mm = p2mm * 25.4;
+    const pane2 = buildPaneLayers(2, p2mm, kGlass, kPvb);
+    const [e1g1, e2g1] = getGapEmissivities(config, lowE, 0);
+    const gap1 = computeArgonGap(gap1mm, e1g1, e2g1, temps.TmK, dT);
+    gap1.mm = gap1mm;
+    gap1.idx = 1;
+    gapResults.push(gap1);
+    allPaneLayers.push(...pane2.layers);
+
+    if(config === 'triple'){
+      let gap2mm = parseFloat(document.getElementById('gGap2').value) || 12;
+      if(unitMode === 'imperial') gap2mm = gap2mm * 25.4;
+      gap2mm = Math.max(6, Math.min(20, gap2mm));
+      let p3mm = parseFloat(document.getElementById('gPane3').value) || 4;
+      if(unitMode === 'imperial') p3mm = p3mm * 25.4;
+      const pane3 = buildPaneLayers(3, p3mm, kGlass, kPvb);
+      const [e1g2, e2g2] = getGapEmissivities(config, lowE, 1);
+      const gap2 = computeArgonGap(gap2mm, e1g2, e2g2, temps.TmK, dT);
+      gap2.mm = gap2mm;
+      gap2.idx = 2;
+      gapResults.push(gap2);
+      allPaneLayers.push(...pane3.layers);
+    }
+  }
+
+  html += '<h4>Solid Layers (Glass + PVB)</h4>';
+  let R_solid = 0;
+  allPaneLayers.forEach(l => {
+    html += dr(l.label+' thickness', f(l.tmm)+' mm  ('+f(l.tmm/1000)+' m)');
+    html += dr(l.label+' k (W/m·K)', f(l.k));
+    html += dr(l.label+' R (m²·K/W)', f(l.R));
+    R_solid += l.R;
+  });
+
+  let R_gaps = 0;
+  if(gapResults.length > 0){
+    html += '<h4>Argon Gaps (EN 673 model)</h4>';
+    gapResults.forEach(g => {
+      html += dr('Gap '+g.idx+' thickness', f(g.mm)+' mm  ('+f(g.d)+' m)');
+      html += dr('Gap '+g.idx+' ε₁', f(g.eps1));
+      html += dr('Gap '+g.idx+' ε₂', f(g.eps2));
+      html += dr('Gap '+g.idx+' h_r (W/m²·K)', f(g.h_r));
+      html += dr('Gap '+g.idx+' k_argon (W/m·K)', f(g.k_ar));
+      html += dr('Gap '+g.idx+' Ra', g.Ra.toExponential(3));
+      html += dr('Gap '+g.idx+' Nu', f(g.Nu));
+      html += dr('Gap '+g.idx+' h_c (W/m²·K)', f(g.h_c));
+      html += dr('Gap '+g.idx+' h_total (W/m²·K)', f(g.h_total));
+      html += dr('Gap '+g.idx+' R_gap (m²·K/W)', f(g.R_gap));
+      R_gaps += g.R_gap;
+    });
+  }
+
+  const lowEText = lowE === 'none' ? 'None' : lowE === 'one' ? 'On one pane (typical)' : 'On two panes';
+  html += '<h4>Low-E Coating</h4>';
+  html += dr('Setting selected', lowEText);
+  html += dr('ε_clear', f(0.84));
+  html += dr('ε_lowE', lowE !== 'none' ? f(0.04) : '—');
+  html += dr('Applied via', lowE !== 'none' && config !== 'single' ? 'Gap radiation h_r (emissivity)' : 'N/A');
+
+  html += '<h4>Laminated Glass</h4>';
+  const paneCount = config === 'single' ? 1 : config === 'triple' ? 3 : 2;
+  let anyLam = false;
+  for(let n = 1; n <= paneCount; n++){
+    const li = getLamInfo(n);
+    if(li){
+      anyLam = true;
+      html += dr('Pane '+n+' laminated', 'Yes');
+      html += dr('PVB thickness', li.interlayer+' mm');
+      html += dr('k_pvb (W/m·K)', f(kPvb));
+      html += dr('R_pvb (m²·K/W)', f((li.interlayer/1000)/kPvb));
+      html += dr('Applied via', 'Real layer in R stack');
+    }
+  }
+  if(!anyLam) html += dr('Laminated panes', 'None');
+
+  const R_total = Rsi_g + R_solid + R_gaps + Rse_g;
+  const finalU = Math.round((1 / R_total) * 100) / 100;
+
+  html += '<h4>Summary</h4>';
+  html += dr('R_solid_total (m²·K/W)', f(R_solid));
+  html += dr('R_gaps_total (m²·K/W)', f(R_gaps));
+  html += dr('R_total (m²·K/W)', f(R_total));
+  html += dr('U = 1/R_total (W/m²·K)', f(1/R_total));
+  html += dr('Final U (W/m²·K)', f(finalU));
+  html += dr('Final U (BTU/h·ft²·°F)', f(uSiToImp(finalU)));
+
+  panel.innerHTML = html;
+  updateGlassRefDelta(finalU);
+}
+
+function updateGlassRefDelta(finalU_si){
+  const deltaEl = document.getElementById('glassDebugDelta');
+  const refVal = parseFloat(document.getElementById('glassRefU').value);
+  if(!refVal || refVal <= 0){ deltaEl.textContent = ''; return; }
+  const pct = ((finalU_si - refVal) / refVal) * 100;
+  const sign = pct >= 0 ? '+' : '';
+  deltaEl.innerHTML = '\u0394 vs Reference: <span style="color:'+(pct > 0 ? 'var(--error)' : 'var(--success)')+'">'+sign+pct.toFixed(1)+'%</span>';
+}
+
+function onGlassUManualEdit(){
+  document.getElementById('glazeConfig').value = 'custom';
+  document.getElementById('glazeInputs').style.display = 'none';
+  document.getElementById('lowEField').style.display = 'none';
+  document.getElementById('lowECoating').value = 'none';
+  resetPaneTypes();
+  document.getElementById('paneTypeRow').style.display = 'none';
+  document.getElementById('engLine_Glass').textContent = '';
+  updateGlassDebug();
+  recalc();
+}
+
+function cToF(c){ return c * 9/5 + 32; }
+function fToC(f){ return (f - 32) * 5/9; }
+function mToFt(m){ return m * M_TO_FT; }
+function ftToM(ft){ return ft / M_TO_FT; }
+function sqmToSqft(s){ return s * SQM_TO_SQFT; }
+function uSiToImp(u){ return u * U_SI_TO_IMP; }
+function uImpToSi(u){ return u / U_SI_TO_IMP; }
+function wToBtu(w){ return w * W_TO_BTU; }
+
+function getVal(id){
+  const el = document.getElementById(id);
+  if(!el) return NaN;
+  return parseFloat(el.value);
+}
+
+function setVal(id, v){
+  const el = document.getElementById(id);
+  if(el) el.value = v;
+}
+
+function toSI_temp(v){ return unitMode === 'imperial' ? fToC(v) : v; }
+function toSI_len(v){ return unitMode === 'imperial' ? v * 0.0254 : v; }
+function toSI_u(v){ return unitMode === 'imperial' ? uImpToSi(v) : v; }
+function fromSI_temp(c){ return unitMode === 'imperial' ? cToF(c) : c; }
+function fromSI_len(m){ return unitMode === 'imperial' ? m / 0.0254 : m; }
+function fromSI_u(u){ return unitMode === 'imperial' ? uSiToImp(u) : u; }
+
+function fmt(n, d=2){
+  if(isNaN(n)) return '—';
+  return Number(n).toFixed(d);
+}
+
+const wallLenManual = {1:false, 2:false, 3:false, 4:false};
+
+function getFloorMode(){ return document.querySelector('input[name="floorMode"]:checked').value; }
+function getWallMode(){ return document.querySelector('input[name="wallMode"]:checked').value; }
+
+function onFloorModeChange(){
+  const mode = getFloorMode();
+  document.getElementById('floorRectRow').style.display = mode === 'rect' ? '' : 'none';
+  document.getElementById('floorIrregRow').style.display = mode === 'irregular' ? '' : 'none';
+  recalc();
+}
+
+function onWallModeChange(){
+  const mode = getWallMode();
+  document.getElementById('wallIndividualRow').style.display = mode === 'individual' ? '' : 'none';
+  document.getElementById('wallTotalRow').style.display = mode === 'total' ? '' : 'none';
+  recalc();
+}
+
+function onWallLenManual(i){
+  wallLenManual[i] = true;
+}
+
+function onRoomDimInput(){
+  if(getFloorMode() !== 'rect' || getWallMode() !== 'individual') { recalc(); return; }
+  const w = getVal('roomWidth');
+  const l = getVal('roomLength');
+  if(!isNaN(w) && w > 0){
+    if(!wallLenManual[2]) setVal('wallLen2', fmt(w, 2));
+    if(!wallLenManual[4]) setVal('wallLen4', fmt(w, 2));
+  }
+  if(!isNaN(l) && l > 0){
+    if(!wallLenManual[1]) setVal('wallLen1', fmt(l, 2));
+    if(!wallLenManual[3]) setVal('wallLen3', fmt(l, 2));
+  }
+  recalc();
+}
+
+function toSI_area(v){ return unitMode === 'imperial' ? v * 0.09290304 : v; }
+function fromSI_area(v){ return unitMode === 'imperial' ? v / 0.09290304 : v; }
+
+function getEffectiveFloorArea(){
+  if(getFloorMode() === 'irregular'){
+    return toSI_area(getVal('floorAreaDirect') || 0);
+  }
+  return toSI_len(getVal('roomWidth') || 0) * toSI_len(getVal('roomLength') || 0);
+}
+
+function getEffectiveHeight(){
+  if(getFloorMode() === 'irregular'){
+    return toSI_len(getVal('roomHeightIrreg') || 0);
+  }
+  return toSI_len(getVal('roomHeight') || 0);
+}
+
+function getEffectiveWallLengths(){
+  if(getWallMode() === 'total'){
+    const total = toSI_len(getVal('wallLenTotal') || 0);
+    return [total, 0, 0, 0];
+  }
+  const result = [];
+  for(let i=1; i<=4; i++) result.push(toSI_len(getVal('wallLen'+i) || 0));
+  return result;
+}
+
+function setUnit(mode){
+  const oldMode = unitMode;
+  unitMode = mode;
+  document.getElementById('btnMetric').classList.toggle('active', mode==='metric');
+  document.getElementById('btnImperial').classList.toggle('active', mode==='imperial');
+  if(oldMode !== mode) convertInputs(oldMode, mode);
+  updateLabels();
+  solidSurfaces.forEach(s => { showBaseFields(s); if(uAutoMode[s]) calcSolidU(s); });
+  if(document.getElementById('glazeConfig').value !== 'custom') calcGlassU();
+  onGlazeConfigChange();
+  recalc();
+}
+
+function convertInputs(from, to){
+  const tempIds = ['extTemp','intTemp','wineInTemp'];
+  allSurfKeys.forEach(k => tempIds.push('surfTemp'+k));
+  const lenIds = ['roomWidth','roomLength','roomHeight','roomHeightIrreg','wallLen1','wallLen2','wallLen3','wallLen4','wallLenTotal','glassLen1','glassLen2','glassLen3','glassLen4','glassHeight','ledContLen','ledIntLen'];
+  const areaIds = ['floorAreaDirect'];
+  areaIds.forEach(id => {
+    const v = getVal(id);
+    if(!isNaN(v) && v !== 0){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(v / 0.09290304, 2));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(v * 0.09290304, 2));
+    }
+  });
+  const uIds = ['uFloor','uCeiling','uWalls','uGlass'];
+  const baseThickIds = [];
+  solidSurfaces.forEach(s => {
+    ['baseThick1_','baseThick2_','baseThick3_','insThick_'].forEach(p => baseThickIds.push(p+s));
+  });
+  const glazeThickIds = ['gPane1','gGap1','gPane2','gGap2','gPane3'];
+  tempIds.forEach(id => {
+    const v = getVal(id);
+    if(!isNaN(v)){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(cToF(v),1));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(fToC(v),1));
+    }
+  });
+  lenIds.forEach(id => {
+    const v = getVal(id);
+    if(!isNaN(v) && v !== 0){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(v / 0.0254, 2));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(v * 0.0254, 2));
+    }
+  });
+  uIds.forEach(id => {
+    const v = getVal(id);
+    if(!isNaN(v)){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(uSiToImp(v),4));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(uImpToSi(v),4));
+    }
+  });
+  baseThickIds.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const v = parseFloat(el.value);
+    if(!isNaN(v) && v > 0){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(v/25.4,2));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(v*25.4,1));
+    }
+  });
+  glazeThickIds.forEach(id => {
+    const v = getVal(id);
+    if(!isNaN(v) && v > 0){
+      if(from==='metric' && to==='imperial') setVal(id, fmt(v/25.4,2));
+      else if(from==='imperial' && to==='metric') setVal(id, fmt(v*25.4,1));
+    }
+  });
+}
+
+function updateLabels(){
+  const tU = unitMode==='metric' ? '(°C)' : '(°F)';
+  const lU = unitMode==='metric' ? '(m)' : '(in)';
+  const uU = unitMode==='metric' ? '(W/m²·K)' : '(BTU/h·ft²·°F)';
+  document.getElementById('unitExtTemp').textContent = tU;
+  document.getElementById('unitIntTemp').textContent = tU;
+  document.getElementById('unitWineIn').textContent = tU;
+  document.getElementById('unitWineTarget').textContent = tU;
+  document.querySelectorAll('.surfTempUnit').forEach(el => el.textContent = tU);
+  document.getElementById('unitWidth').textContent = lU;
+  document.getElementById('unitLength').textContent = lU;
+  document.getElementById('unitHeight').textContent = lU;
+  document.getElementById('unitGlassH').textContent = lU;
+  document.getElementById('unitHeightIrreg').textContent = lU;
+  const aU = unitMode==='metric' ? '(m\u00B2)' : '(ft\u00B2)';
+  document.querySelectorAll('.areaUnit').forEach(el => el.textContent = aU);
+  document.querySelectorAll('.wallLenUnit').forEach(el => el.textContent = lU);
+  document.querySelectorAll('.glassLenUnit').forEach(el => el.textContent = lU);
+  document.querySelectorAll('.uUnit').forEach(el => el.textContent = uU);
+  const thU = unitMode==='metric' ? '(mm)' : '(in)';
+  document.querySelectorAll('.insThickUnit').forEach(el => el.textContent = thU);
+}
+
+function updateDualDisplays(){
+  const showDualTemp = (elId, valInUserUnit) => {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    const v = parseFloat(valInUserUnit);
+    if(isNaN(v)){ el.textContent = ''; return; }
+    const c = unitMode==='imperial' ? fToC(v) : v;
+    const f = unitMode==='metric' ? cToF(v) : v;
+    el.textContent = fmt(c,1)+' °C | '+fmt(f,1)+' °F';
+  };
+  const showDualLen = (elId, valInUserUnit) => {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    const v = parseFloat(valInUserUnit);
+    if(isNaN(v) || v===0){ el.textContent = ''; return; }
+    const m = unitMode==='imperial' ? v * 0.0254 : v;
+    const inches = unitMode==='metric' ? v / 0.0254 : v;
+    el.textContent = fmt(m,3)+' m | '+fmt(inches,1)+' in';
+  };
+  const showDualU = (elId, valInUserUnit) => {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    const v = parseFloat(valInUserUnit);
+    if(isNaN(v)){ el.textContent = ''; return; }
+    const si = unitMode==='imperial' ? uImpToSi(v) : v;
+    const imp = unitMode==='metric' ? uSiToImp(v) : v;
+    el.textContent = fmt(si,3)+' W/m²·K | '+fmt(imp,4)+' BTU/h·ft²·°F';
+  };
+
+  showDualTemp('dualExtTemp', document.getElementById('extTemp').value);
+  showDualTemp('dualIntTemp', document.getElementById('intTemp').value);
+  allSurfKeys.forEach(k => { showDualTemp('dualSurf'+k, document.getElementById('surfTemp'+k).value); });
+  showDualTemp('dualWineIn', document.getElementById('wineInTemp').value);
+  showDualTemp('dualWineTarget', document.getElementById('wineTargetTemp').value);
+  showDualLen('dualWidth', document.getElementById('roomWidth').value);
+  showDualLen('dualLength', document.getElementById('roomLength').value);
+  showDualLen('dualHeight', document.getElementById('roomHeight').value);
+  showDualLen('dualHeightIrreg', document.getElementById('roomHeightIrreg').value);
+  showDualLen('dualGlassH', document.getElementById('glassHeight').value);
+  const faVal = parseFloat(document.getElementById('floorAreaDirect').value);
+  if(!isNaN(faVal) && faVal > 0){
+    const faSI = toSI_area(faVal);
+    const faImp = fromSI_area(faSI);
+    document.getElementById('dualFloorArea').textContent = fmt(faSI,2)+' m\u00B2 | '+fmt(faImp,1)+' ft\u00B2';
+  } else { document.getElementById('dualFloorArea').textContent = ''; }
+  for(let i=1;i<=4;i++){
+    showDualLen('dualWallLen'+i, document.getElementById('wallLen'+i).value);
+    showDualLen('dualGlassLen'+i, document.getElementById('glassLen'+i).value);
+  }
+  showDualLen('dualWallLenTotal', document.getElementById('wallLenTotal').value);
+  showDualU('dualUFloor', document.getElementById('uFloor').value);
+  showDualU('dualUCeiling', document.getElementById('uCeiling').value);
+  showDualU('dualUWalls', document.getElementById('uWalls').value);
+  showDualU('dualUGlass', document.getElementById('uGlass').value);
+  ['gPane1','gGap1','gPane2','gGap2','gPane3'].forEach(id => {
+    const v = parseFloat(document.getElementById(id).value);
+    const dEl = document.getElementById('dual'+id.charAt(0).toUpperCase()+id.slice(1));
+    if(dEl && !isNaN(v)){
+      if(unitMode==='metric') dEl.textContent = fmt(v/25.4,2)+' in';
+      else dEl.textContent = fmt(v*25.4,1)+' mm';
+    }
+  });
+}
+
+function toggleSection(header){
+  header.classList.toggle('collapsed');
+  header.nextElementSibling.classList.toggle('hidden');
+}
+
+function onExtTempChange(){
+  const extVal = document.getElementById('extTemp').value;
+  allSurfKeys.forEach(k => {
+    if(!surfManual[k]) document.getElementById('surfTemp'+k).value = extVal;
+  });
+  const wineInEl = document.getElementById('wineInTemp');
+  if(wineInEl.dataset.autoSync !== 'false') wineInEl.value = extVal;
+  recalc();
+}
+
+function syncSurfTemp(key){
+  const extVal = document.getElementById('extTemp').value;
+  document.getElementById('surfTemp'+key).value = extVal;
+  surfManual[key] = false;
+  recalc();
+}
+
+function applyExtToAllWalls(){
+  const extVal = document.getElementById('extTemp').value;
+  for(let i=1;i<=4;i++){
+    document.getElementById('surfTempWall'+i).value = extVal;
+    surfManual['Wall'+i] = false;
+  }
+  recalc();
+}
+
+function applyExtToAllGlass(){
+  const extVal = document.getElementById('extTemp').value;
+  for(let i=1;i<=4;i++){
+    document.getElementById('surfTempGlass'+i).value = extVal;
+    surfManual['Glass'+i] = false;
+  }
+  recalc();
+}
+
+function resetAllSurfaceTemps(){
+  const extVal = document.getElementById('extTemp').value;
+  allSurfKeys.forEach(k => {
+    document.getElementById('surfTemp'+k).value = extVal;
+    surfManual[k] = false;
+  });
+  recalc();
+}
+
+function onGlassHOverride(){
+  const checked = document.getElementById('overrideGlassH').checked;
+  document.getElementById('glassHeightRow').style.display = checked ? '' : 'none';
+  if(!checked) document.getElementById('glassHeight').value = '';
+  recalc();
+}
+
+function updateEquipHeader(){
+  document.getElementById('equipHeader').style.display = equipRows.length > 0 ? '' : 'none';
+}
+
+function addEquipRow(name='', power=0, hours=8){
+  const id = equipId++;
+  equipRows.push(id);
+  const container = document.getElementById('equipContainer');
+  const div = document.createElement('div');
+  div.className = 'equip-row';
+  div.id = 'eqRow_'+id;
+  div.innerHTML = '<input type="text" class="eq-name" placeholder="Equipment name" value="'+name+'" oninput="recalc()">'+
+    '<input type="number" class="eq-power" min="0" step="1" placeholder="Watts" value="'+power+'" oninput="recalc()">'+
+    '<input type="number" class="eq-hours" min="0" max="24" step="0.5" placeholder="hrs/day" value="'+hours+'" oninput="recalc()">'+
+    '<button class="btn btn-small btn-danger" onclick="removeEquipRow('+id+')">&#10005;</button>';
+  container.appendChild(div);
+  updateEquipHeader();
+  recalc();
+}
+
+function removeEquipRow(id){
+  const el = document.getElementById('eqRow_'+id);
+  if(el) el.remove();
+  equipRows = equipRows.filter(r => r !== id);
+  updateEquipHeader();
+  recalc();
+}
+
+function validate(){
+  let errors = [];
+  let valid = true;
+  const clearErr = (id) => { const el = document.getElementById(id); if(el) el.textContent = ''; };
+  const setErr = (id, msg) => { const el = document.getElementById(id); if(el) el.textContent = msg; valid = false; errors.push(msg); };
+
+  ['errWidth','errLength','errHeight','errGlassH','errFloorArea','errHeightIrreg'].forEach(clearErr);
+  for(let i=1;i<=4;i++){ clearErr('errGlassLen'+i); }
+  clearErr('errPeopleHours'); clearErr('errLightContHours'); clearErr('errLightIntDuty');
+
+  const fMode = getFloorMode();
+  let hSI;
+  if(fMode === 'rect'){
+    const w = getVal('roomWidth'), l = getVal('roomLength'), h = getVal('roomHeight');
+    if(isNaN(w)||w<=0) setErr('errWidth','Required, >0');
+    if(isNaN(l)||l<=0) setErr('errLength','Required, >0');
+    if(isNaN(h)||h<=0) setErr('errHeight','Required, >0');
+    hSI = toSI_len(h);
+    ['roomWidth','roomLength','roomHeight'].forEach(id => {
+      document.getElementById(id).classList.toggle('invalid', isNaN(getVal(id)) || getVal(id) <= 0);
+    });
+  } else {
+    const fa = getVal('floorAreaDirect'), hi = getVal('roomHeightIrreg');
+    if(isNaN(fa)||fa<=0) setErr('errFloorArea','Required, >0');
+    if(isNaN(hi)||hi<=0) setErr('errHeightIrreg','Required, >0');
+    hSI = toSI_len(hi);
+  }
+
+  const glassHOverride = document.getElementById('overrideGlassH').checked;
+  let glassHSI = hSI || 0;
+  if(glassHOverride){
+    const gh = getVal('glassHeight');
+    if(isNaN(gh)||gh<0){ setErr('errGlassH','Required, >=0'); }
+    else {
+      glassHSI = toSI_len(gh);
+      if(hSI && glassHSI > hSI + 0.001) setErr('errGlassH','Cannot exceed room height');
+    }
+  }
+
+  const wallLenSIv = getEffectiveWallLengths();
+  for(let i=1;i<=4;i++){
+    const gl = getVal('glassLen'+i);
+    const wlSI = wallLenSIv[i-1];
+    if(!isNaN(gl) && gl < 0) setErr('errGlassLen'+i,'Must be >= 0');
+    if(!isNaN(gl) && wlSI > 0){
+      const glSI = toSI_len(gl);
+      if(glSI > wlSI + 0.001) setErr('errGlassLen'+i,'Exceeds wall length');
+      if(hSI){
+        const opaqueArea = wlSI * hSI - glSI * glassHSI;
+        if(opaqueArea < -0.001) setErr('errGlassLen'+i,'Glass area exceeds wall area');
+      }
+    }
+  }
+
+  const ph = getVal('peopleHours');
+  if(!isNaN(ph) && (ph<0||ph>24)) setErr('errPeopleHours','0-24');
+  const lch = getVal('lightContHours');
+  if(!isNaN(lch) && (lch<0||lch>24)) setErr('errLightContHours','0-24');
+  const lid = getVal('lightIntDuty');
+  if(!isNaN(lid) && (lid<0||lid>100)) setErr('errLightIntDuty','0-100');
+
+  return { valid, errors };
+}
+
+const SOLAR_IRRADIANCE = {
+  na_mid:  {N:[30,40,55,65,75,80,80,70,55,40,30,25],E:[100,130,165,200,220,230,225,210,175,135,100,85],S:[280,250,200,150,110,95,100,135,190,250,275,285],W:[100,130,165,200,220,230,225,210,175,135,100,85]},
+  na_hot:  {N:[35,45,60,75,90,95,95,85,65,45,35,30],E:[130,160,200,240,260,270,265,245,210,165,130,115],S:[320,290,240,180,140,120,125,165,225,285,315,325],W:[130,160,200,240,260,270,265,245,210,165,130,115]},
+  eu_mid:  {N:[20,30,45,60,70,75,75,65,50,35,22,18],E:[80,110,150,190,215,225,220,200,160,115,80,65],S:[260,235,190,140,105,90,95,125,175,230,255,265],W:[80,110,150,190,215,225,220,200,160,115,80,65]},
+  me_hot:  {N:[50,60,80,100,120,130,130,115,90,65,50,45],E:[160,190,235,275,300,315,310,285,245,195,160,145],S:[340,310,260,200,155,130,140,180,245,305,335,345],W:[160,190,235,275,300,315,310,285,245,195,160,145]},
+  ca_cont: {N:[20,30,50,65,80,85,85,75,55,35,22,16],E:[90,120,160,200,225,235,230,210,170,125,90,75],S:[270,245,195,145,110,95,100,130,180,240,265,275],W:[90,120,160,200,225,235,230,210,170,125,90,75]},
+  ea_mid:  {N:[25,35,50,65,75,80,80,70,55,40,28,22],E:[95,125,160,200,220,230,225,210,170,130,95,80],S:[270,240,195,145,110,95,100,130,180,235,265,275],W:[95,125,160,200,220,230,225,210,170,130,95,80]},
+  sa_humid:{N:[55,65,85,105,120,115,100,95,85,70,55,50],E:[150,180,220,255,270,250,220,215,210,175,150,135],S:[300,275,230,175,130,105,110,145,210,270,295,305],W:[150,180,220,255,270,250,220,215,210,175,150,135]},
+  au_mid:  {N:[280,250,200,150,110,90,95,130,185,245,275,285],E:[100,130,165,195,215,220,215,205,170,135,100,85],S:[25,35,50,65,75,80,80,70,55,40,28,22],W:[100,130,165,195,215,220,215,205,170,135,100,85]}
+};
+
+function getIrradiance(region, month, orient){
+  if(region === 'custom') return 0;
+  const rd = SOLAR_IRRADIANCE[region];
+  if(!rd) return 0;
+  const od = rd[orient];
+  if(!od) return 0;
+  return od[month] || 0;
+}
+
+function calcAutoShgc(){
+  const config = document.getElementById('glazeConfig').value;
+  let base;
+  if(config === 'single') base = 0.85;
+  else if(config === 'double') base = 0.70;
+  else if(config === 'triple') base = 0.55;
+  else base = 0.70;
+  const lowE = document.getElementById('lowECoating').value;
+  let lowEMult = 1.0;
+  if(lowE === 'one') lowEMult = 0.85;
+  else if(lowE === 'two') lowEMult = 0.78;
+  let lamMult = 1.0;
+  const paneCount = config === 'single' ? 1 : config === 'triple' ? 3 : 2;
+  for(let n=1; n<=paneCount; n++){
+    const pt = document.getElementById('gPaneType'+n);
+    if(pt && pt.value === 'lam') lamMult *= 0.98;
+  }
+  return Math.max(0.15, Math.min(0.90, base * lowEMult * lamMult));
+}
+
+function updateAutoShgc(){
+  const shgcAuto = calcAutoShgc();
+  document.getElementById('autoShgcDisplay').textContent = 'SHGC = '+fmt(shgcAuto, 3)+' (Auto from glass config)';
+  for(let i=1; i<=4; i++){
+    if(document.getElementById('shgcMode'+i).value === 'auto'){
+      document.getElementById('shgcVal'+i).value = fmt(shgcAuto, 3);
+    }
+  }
+}
+
+function onShgcModeChange(n){
+  const mode = document.getElementById('shgcMode'+n).value;
+  const inp = document.getElementById('shgcVal'+n);
+  if(mode === 'auto'){
+    inp.readOnly = true;
+    inp.style.background = '#f0f0f0';
+    inp.value = fmt(calcAutoShgc(), 3);
+  } else {
+    if(inp.readOnly) inp.value = fmt(calcAutoShgc(), 3);
+    inp.readOnly = false;
+    inp.style.background = '';
+  }
+  recalc();
+}
+
+function onIrrOverride(n){
+  const checked = document.getElementById('solarIrrOverride'+n).checked;
+  const inp = document.getElementById('solarIrr'+n);
+  if(checked){ inp.readOnly = false; inp.style.background = ''; }
+  else { inp.readOnly = true; inp.style.background = '#f0f0f0'; }
+  recalc();
+}
+
+function updateSolarIrradiance(){
+  const region = document.getElementById('solarRegion').value;
+  const month = parseInt(document.getElementById('solarMonth').value);
+  for(let i=1; i<=4; i++){
+    if(!document.getElementById('solarIrrOverride'+i).checked){
+      const orient = document.getElementById('solarOrient'+i).value;
+      const irr = getIrradiance(region, month, orient);
+      document.getElementById('solarIrr'+i).value = irr;
+    }
+    const irrVal = parseFloat(document.getElementById('solarIrr'+i).value) || 0;
+    document.getElementById('dualIrr'+i).textContent = '= '+fmt(irrVal * 0.3170, 1)+' BTU/h·ft²';
+  }
+}
+
+function applyAutoShgcAll(){
+  for(let i=1; i<=4; i++){ document.getElementById('shgcMode'+i).value = 'auto'; onShgcModeChange(i); }
+}
+
+function applySameShgcAll(){
+  const v = document.getElementById('shgcVal1').value;
+  const mode = document.getElementById('shgcMode1').value;
+  for(let i=2; i<=4; i++){
+    document.getElementById('shgcMode'+i).value = mode;
+    document.getElementById('shgcVal'+i).value = v;
+    const inp = document.getElementById('shgcVal'+i);
+    inp.readOnly = mode === 'auto';
+    inp.style.background = mode === 'auto' ? '#f0f0f0' : '';
+  }
+  recalc();
+}
+
+function applySameExtShading(){
+  const v = document.getElementById('solarExtShade1').value;
+  for(let i=2; i<=4; i++) document.getElementById('solarExtShade'+i).value = v;
+  recalc();
+}
+
+function applySameIntShading(){
+  const v = document.getElementById('solarIntShade1').value;
+  for(let i=2; i<=4; i++) document.getElementById('solarIntShade'+i).value = v;
+  recalc();
+}
+
+function calcSolarGains(glassAreas){
+  updateSolarIrradiance();
+  updateAutoShgc();
+  const results = [];
+  for(let i=0; i<4; i++){
+    const area = glassAreas[i] || 0;
+    if(area <= 0){ results.push(0); document.getElementById('solarResult'+(i+1)).textContent = ''; continue; }
+    const irr = parseFloat(document.getElementById('solarIrr'+(i+1)).value) || 0;
+    const shgc = parseFloat(document.getElementById('shgcVal'+(i+1)).value) || 0;
+    const extS = Math.max(0, Math.min(1, parseFloat(document.getElementById('solarExtShade'+(i+1)).value) || 0));
+    const intS = Math.max(0, Math.min(1, parseFloat(document.getElementById('solarIntShade'+(i+1)).value) || 0));
+    const q = area * irr * shgc * extS * intS;
+    results.push(q);
+    const orient = document.getElementById('solarOrient'+(i+1)).value;
+    const modeLabel = document.getElementById('shgcMode'+(i+1)).value === 'auto' ? 'Auto' : 'Manual';
+    document.getElementById('solarResult'+(i+1)).textContent = fmt(q,1)+' W | '+fmt(wToBtu(q),1)+' BTU/h  ('+orient+', SHGC '+modeLabel+'='+fmt(shgc,3)+')';
+  }
+  return results;
+}
+
+function recalc(){
+  updateDualDisplays();
+  updateLightLabels();
+  syncWineTarget();
+
+  if(document.getElementById('lightContMode').value === 'LED'){ calcLedPower('Cont'); updateLedDuals(); }
+  if(document.getElementById('lightIntMode').value === 'LED'){ calcLedPower('Int'); updateLedDuals(); }
+
+  const { valid, errors } = validate();
+  const vs = document.getElementById('validationSummary');
+  const tbody = document.getElementById('resultsTableBody');
+
+  if(!valid){
+    vs.style.display = 'block';
+    vs.textContent = 'Please fix: ' + errors.slice(0,3).join('; ') + (errors.length>3 ? ' (+' + (errors.length-3) + ' more)' : '');
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-light);padding:30px">Fix validation errors above to see results.</td></tr>';
+    return;
+  }
+
+  const wallLenSI = getEffectiveWallLengths();
+  let allWallsZero = wallLenSI.every(l => l <= 0);
+  if(allWallsZero){
+    vs.style.display = 'block';
+    vs.style.background = '#fff3cd'; vs.style.color = '#856404'; vs.style.borderColor = '#ffc107';
+    vs.textContent = 'At least one wall length must be entered to calculate wall conduction.';
+  } else {
+    vs.style.display = 'none'; vs.style.background = ''; vs.style.color = ''; vs.style.borderColor = '';
+  }
+
+  const intTempSI = toSI_temp(getVal('intTemp'));
+  const surfFloorSI = toSI_temp(getVal('surfTempFloor'));
+  const surfCeilSI = toSI_temp(getVal('surfTempCeiling'));
+  const wallOutsideTemps = [];
+  for(let i=1;i<=4;i++) wallOutsideTemps.push(toSI_temp(getVal('surfTempWall'+i)));
+  const glassOutsideTemps = [];
+  for(let i=1;i<=4;i++) glassOutsideTemps.push(toSI_temp(getVal('surfTempGlass'+i)));
+  const heightSI = getEffectiveHeight();
+  const floorArea = getEffectiveFloorArea();
+  const glassHOverride = document.getElementById('overrideGlassH').checked;
+  let glassHeightSI = heightSI;
+  if(glassHOverride){
+    const gh = getVal('glassHeight');
+    if(!isNaN(gh) && gh > 0) glassHeightSI = toSI_len(gh);
+  }
+  const glassLenSI = [];
+  const wMode = getWallMode();
+  for(let i=1;i<=4;i++){
+    if(wMode === 'total' && i > 1) glassLenSI.push(0);
+    else glassLenSI.push(toSI_len(getVal('glassLen'+i)||0));
+  }
+  const uFloorSI = toSI_u(getVal('uFloor'));
+  const uCeilSI = toSI_u(getVal('uCeiling'));
+  const uWallsSI = toSI_u(getVal('uWalls'));
+  const uGlassSI = toSI_u(getVal('uGlass'));
+  const ceilArea = floorArea;
+  const wallActive = [];
+  const opaqueAreas = [];
+  const glassAreas = [];
+  for(let i=0;i<4;i++){
+    const active = wallLenSI[i] > 0;
+    wallActive.push(active);
+    if(active){
+      const totalWallArea = wallLenSI[i] * heightSI;
+      const ga = glassLenSI[i] * glassHeightSI;
+      glassAreas.push(ga);
+      opaqueAreas.push(Math.max(0, totalWallArea - ga));
+    } else { glassAreas.push(0); opaqueAreas.push(0); }
+  }
+  const dtFloor = surfFloorSI - intTempSI;
+  const dtCeil = surfCeilSI - intTempSI;
+  const dtWalls = [];
+  for(let i=0;i<4;i++) dtWalls.push(wallOutsideTemps[i] - intTempSI);
+  const dtGlass = [];
+  for(let i=0;i<4;i++) dtGlass.push(glassOutsideTemps[i] - intTempSI);
+  const qFloor = uFloorSI * floorArea * dtFloor;
+  const qCeil = uCeilSI * ceilArea * dtCeil;
+  const qOpaqueWalls = [];
+  for(let i=0;i<4;i++) qOpaqueWalls.push(wallActive[i] ? uWallsSI * opaqueAreas[i] * dtWalls[i] : 0);
+  const qOpaqueTotal = qOpaqueWalls.reduce((a,b)=>a+b,0);
+  const qGlassWalls = [];
+  for(let i=0;i<4;i++) qGlassWalls.push(wallActive[i] ? uGlassSI * glassAreas[i] * dtGlass[i] : 0);
+  const qGlassTotal = qGlassWalls.reduce((a,b)=>a+b,0);
+  const conductionTotal = qFloor + qCeil + qOpaqueTotal + qGlassTotal;
+  const numPeople = getVal('numPeople')||0;
+  const heatPP = getVal('heatPerPerson')||0;
+  const pHours = Math.min(24, Math.max(0, getVal('peopleHours')||0));
+  const qPeople = numPeople * heatPP * (pHours/24);
+  const lcMode = document.getElementById('lightContMode').value;
+  let lcPower;
+  if(lcMode === 'LED'){ lcPower = calcLedPower('Cont'); } else { lcPower = getVal('lightContPower')||0; if(lcMode==='Wm2') lcPower = lcPower * floorArea; }
+  const lcHours = Math.min(24, Math.max(0, getVal('lightContHours')||0));
+  const qLightCont = lcPower * (lcHours/24);
+  const liMode = document.getElementById('lightIntMode').value;
+  let liPower;
+  if(liMode === 'LED'){ liPower = calcLedPower('Int'); } else { liPower = getVal('lightIntPower')||0; if(liMode==='Wm2') liPower = liPower * floorArea; }
+  const liDuty = Math.min(100, Math.max(0, getVal('lightIntDuty')||0));
+  const qLightInt = liPower * (liDuty/100);
+  updateLedDuals();
+  let qEquip = 0;
+  equipRows.forEach(id => {
+    const row = document.getElementById('eqRow_'+id);
+    if(!row) return;
+    const pw = parseFloat(row.querySelector('.eq-power').value)||0;
+    const hr = Math.min(24, Math.max(0, parseFloat(row.querySelector('.eq-hours').value)||0));
+    qEquip += pw * (hr/24);
+  });
+  const doorOp = getVal('doorOpenings')||0;
+  const doorL = getVal('doorLoss')||0;
+  const qDoor = doorOp * doorL;
+  const wineB = getVal('wineBottles')||0;
+  const wineV = getVal('wineVolume')||0.75;
+  const wineInSI = toSI_temp(getVal('wineInTemp'));
+  const wineTargetSI = intTempSI;
+  const wineDT = Math.abs(wineInSI - wineTargetSI);
+  const wineMass = wineB * wineV * 1;
+  const wineEnergy = wineMass * 4186 * wineDT;
+  const qWine = wineEnergy / 86400;
+  const internalTotal = qPeople + qLightCont + qLightInt + qEquip + qDoor + qWine;
+  const disregardSolar = document.getElementById('disregardSolar').checked;
+  const qSolarWallsRaw = calcSolarGains(glassAreas);
+  const qSolarWalls = disregardSolar ? [0,0,0,0] : qSolarWallsRaw;
+  const qSolarTotal = qSolarWalls.reduce((a,b)=>a+b,0);
+  const grandTotal = conductionTotal + internalTotal + qSolarTotal;
+
+  function rw(label, w, cls, areaInfo){
+    cls = cls||''; areaInfo = areaInfo||'';
+    const btu = wToBtu(w);
+    const gainLoss = w < -0.005 ? 'heat-loss' : (w > 0.005 ? 'heat-gain' : '');
+    const tag = w < -0.005 ? ' (loss)' : '';
+    const areaStr = areaInfo ? '<br><span style="font-size:.72rem;color:var(--text-light)">'+areaInfo+'</span>' : '';
+    return '<tr class="'+cls+'"><td>'+label+tag+areaStr+'</td><td class="'+gainLoss+'">'+fmt(w,1)+'</td><td class="'+gainLoss+'">'+fmt(btu,1)+'</td></tr>';
+  }
+  function areaFmt(a){ return fmt(a,2)+' m² / '+fmt(sqmToSqft(a),2)+' ft²'; }
+
+  let html = '';
+  html += '<tr><td colspan="3" style="background:var(--primary);color:#fff;font-weight:700;font-size:.82rem;text-transform:uppercase;padding:6px 12px">Conduction</td></tr>';
+  html += rw('Floor', qFloor, '', areaFmt(floorArea) + ', \u0394T '+fmt(dtFloor,1)+'°C');
+  html += rw('Ceiling', qCeil, '', areaFmt(ceilArea) + ', \u0394T '+fmt(dtCeil,1)+'°C');
+  const anyWallActive = wallActive.some(a=>a);
+  for(let i=0;i<4;i++){
+    if(wallActive[i]) html += rw('Wall '+(i+1), qOpaqueWalls[i], '', areaFmt(opaqueAreas[i])+', \u0394T '+fmt(dtWalls[i],1)+'°C');
+  }
+  if(anyWallActive) html += rw('Walls Total', qOpaqueTotal);
+  for(let i=0;i<4;i++){
+    if(wallActive[i] && glassAreas[i]>0) html += rw('Glass '+(i+1), qGlassWalls[i], '', areaFmt(glassAreas[i])+', \u0394T '+fmt(dtGlass[i],1)+'°C');
+  }
+  html += rw('Glass Total', qGlassTotal);
+  html += rw('Conduction Subtotal', conductionTotal, 'subtotal');
+
+  html += '<tr><td colspan="3" style="background:var(--primary);color:#fff;font-weight:700;font-size:.82rem;text-transform:uppercase;padding:6px 12px">Internal Heat Gains</td></tr>';
+  html += rw('People', qPeople);
+  html += rw('Lighting (Continuous)', qLightCont);
+  html += rw('Lighting (Intermittent)', qLightInt);
+  html += rw('Equipment / Other', qEquip);
+  html += rw('Door Opening Loss', qDoor);
+  html += rw('Wine Bottle Turnover', qWine);
+  html += rw('Internal Gains Subtotal', internalTotal, 'subtotal');
+
+  html += '<tr><td colspan="3" style="background:var(--primary);color:#fff;font-weight:700;font-size:.82rem;text-transform:uppercase;padding:6px 12px">Solar Heat Gain'+(disregardSolar ? ' <span style="font-weight:400;font-size:.75rem;opacity:.8">(disregarded)</span>' : '')+'</td></tr>';
+  if(!disregardSolar){
+    for(let i=0;i<4;i++){
+      if(glassAreas[i] > 0){
+        const orient = document.getElementById('solarOrient'+(i+1)).value;
+        const irr = parseFloat(document.getElementById('solarIrr'+(i+1)).value)||0;
+        const shgc = parseFloat(document.getElementById('shgcVal'+(i+1)).value)||0;
+        const extS = parseFloat(document.getElementById('solarExtShade'+(i+1)).value)||0;
+        const intS = parseFloat(document.getElementById('solarIntShade'+(i+1)).value)||0;
+        html += rw('Wall '+(i+1)+' Solar ('+orient+')', qSolarWalls[i], '', areaFmt(glassAreas[i])+', Irr '+fmt(irr,0)+' W/m², SHGC '+fmt(shgc,3)+', Fext '+fmt(extS,2)+', Fint '+fmt(intS,2));
+      }
+    }
+  }
+  html += rw('Solar Gain Subtotal', qSolarTotal, 'subtotal');
+  html += '<tr class="grand-total"><td>GRAND TOTAL</td><td>'+fmt(grandTotal,1)+' W</td><td>'+fmt(wToBtu(grandTotal),1)+' BTU/h</td></tr>';
+  tbody.innerHTML = html;
+}
+
+const lightSavedState = {Cont:{}, Int:{}};
+
+function onLightModeChange(suffix){
+  const sel = document.getElementById('light'+suffix+'Mode');
+  const prevMode = sel.dataset.prevMode || 'W';
+  const newMode = sel.value;
+  if(prevMode === 'W' || prevMode === 'Wm2'){
+    lightSavedState[suffix][prevMode] = getVal('light'+suffix+'Power');
+  } else if(prevMode === 'LED'){
+    lightSavedState[suffix].LED = { len: getVal('led'+suffix+'Len'), wm: getVal('led'+suffix+'Wm'), dim: getVal('led'+suffix+'Dim') };
+  }
+  if(newMode === 'W' || newMode === 'Wm2'){
+    if(lightSavedState[suffix][newMode] !== undefined) setVal('light'+suffix+'Power', lightSavedState[suffix][newMode]);
+  } else if(newMode === 'LED'){
+    if(lightSavedState[suffix].LED){
+      setVal('led'+suffix+'Len', lightSavedState[suffix].LED.len);
+      setVal('led'+suffix+'Wm', lightSavedState[suffix].LED.wm);
+      setVal('led'+suffix+'Dim', lightSavedState[suffix].LED.dim);
+    }
+  }
+  sel.dataset.prevMode = newMode;
+  updateLightUI(suffix);
+  recalc();
+}
+
+function updateLightUI(suffix){
+  const mode = document.getElementById('light'+suffix+'Mode').value;
+  const powerField = document.getElementById('light'+suffix+'PowerField');
+  const ledFields = document.getElementById('led'+suffix+'Fields');
+  const lbl = document.getElementById('lblLight'+suffix);
+  if(mode === 'LED'){ powerField.style.display = 'none'; ledFields.style.display = ''; }
+  else { powerField.style.display = ''; ledFields.style.display = 'none'; lbl.textContent = mode === 'Wm2' ? 'Power (W/m²)' : 'Power (W)'; }
+}
+
+function calcLedPower(suffix){
+  let len = getVal('led'+suffix+'Len') || 0;
+  if(unitMode === 'imperial') len = len * 0.0254;
+  const wm = getVal('led'+suffix+'Wm') || 0;
+  let dim = getVal('led'+suffix+'Dim');
+  if(isNaN(dim) || dim === '') dim = 100;
+  dim = Math.max(0, Math.min(100, dim));
+  const P = Math.max(0, len) * Math.max(0, wm) * (dim / 100);
+  const el = document.getElementById('led'+suffix+'CalcPower');
+  el.textContent = fmt(P,1)+' W | '+fmt(wToBtu(P),1)+' BTU/h';
+  return P;
+}
+
+function updateLedDuals(){
+  ['Cont','Int'].forEach(s => {
+    const mode = document.getElementById('light'+s+'Mode').value;
+    if(mode !== 'LED') return;
+    const lenVal = getVal('led'+s+'Len') || 0;
+    const wmVal = getVal('led'+s+'Wm') || 0;
+    if(unitMode === 'metric') document.getElementById('dualLed'+s+'Len').textContent = fmt(lenVal / 0.0254, 1)+' in';
+    else document.getElementById('dualLed'+s+'Len').textContent = fmt(lenVal * 0.0254, 3)+' m';
+    document.getElementById('dualLed'+s+'Wm').textContent = '= '+fmt(wmVal / M_TO_FT, 2)+' W/ft';
+  });
+}
+
+function updateLightLabels(){ updateLightUI('Cont'); updateLightUI('Int'); }
+function syncWineTarget(){ document.getElementById('wineTargetTemp').value = document.getElementById('intTemp').value; }
+
+function collectState(){
+  const s = {};
+  s.projectName = document.getElementById('projectName').value;
+  s.projectDate = document.getElementById('projectDate').value;
+  s.unitMode = unitMode;
+  s.floorMode = getFloorMode();
+  s.wallMode = getWallMode();
+  s.wallLenManual = Object.assign({}, wallLenManual);
+  const ids = ['extTemp','intTemp','roomWidth','roomLength','roomHeight',
+    'roomHeightIrreg','floorAreaDirect','wallLenTotal',
+    'wallLen1','wallLen2','wallLen3','wallLen4',
+    'glassLen1','glassLen2','glassLen3','glassLen4',
+    'glassHeight','overrideGlassH',
+    'uFloor','uCeiling','uWalls','uGlass',
+    'baseFloor','baseCeiling','baseWalls',
+    'baseThick1_Floor','baseThick2_Floor','baseThick3_Floor','baseCustomK_Floor',
+    'baseThick1_Ceiling','baseThick2_Ceiling','baseThick3_Ceiling','baseCustomK_Ceiling',
+    'baseThick1_Walls','baseThick2_Walls','baseThick3_Walls','baseCustomK_Walls',
+    'insFloor','insCeiling','insWalls',
+    'insThick_Floor','insThick_Ceiling','insThick_Walls',
+    'insCustomK_Floor','insCustomK_Ceiling','insCustomK_Walls',
+    'glazeConfig','lowECoating',
+    'gPane1','gGap1','gPane2','gGap2','gPane3',
+    'gPaneType1','gPaneType2','gPaneType3',
+    'gInterlayer1','gInterlayer2','gInterlayer3',
+    'glazeUseEnvTemps',
+    'disregardBase_Floor','disregardBase_Ceiling','disregardBase_Walls',
+    'disregardSolar',
+    'numPeople','heatPerPerson','peopleHours',
+    'lightContMode','lightContPower','lightContHours',
+    'ledContLen','ledContWm','ledContDim',
+    'lightIntMode','lightIntPower','lightIntDuty',
+    'ledIntLen','ledIntWm','ledIntDim',
+    'doorOpenings','doorLoss',
+    'wineBottles','wineVolume','wineInTemp',
+    'solarRegion','solarMonth'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(el.type === 'checkbox') s[id] = el.checked;
+    else s[id] = el.value;
+  });
+  allSurfKeys.forEach(k => { s['surfTemp'+k] = document.getElementById('surfTemp'+k).value; });
+  s.surfManual = Object.assign({}, surfManual);
+  s.uAutoMode = Object.assign({}, uAutoMode);
+  for(let i=1;i<=4;i++){
+    s['solarOrient'+i] = document.getElementById('solarOrient'+i).value;
+    s['solarIrr'+i] = document.getElementById('solarIrr'+i).value;
+    s['solarIrrOverride'+i] = document.getElementById('solarIrrOverride'+i).checked;
+    s['shgcMode'+i] = document.getElementById('shgcMode'+i).value;
+    s['shgcVal'+i] = document.getElementById('shgcVal'+i).value;
+    s['solarExtShade'+i] = document.getElementById('solarExtShade'+i).value;
+    s['solarIntShade'+i] = document.getElementById('solarIntShade'+i).value;
+  }
+  s.equipment = [];
+  equipRows.forEach(id => {
+    const row = document.getElementById('eqRow_'+id);
+    if(!row) return;
+    s.equipment.push({
+      name: row.querySelector('.eq-name').value,
+      power: row.querySelector('.eq-power').value,
+      hours: row.querySelector('.eq-hours').value
+    });
+  });
+  return s;
+}
+
+function applyState(s){
+  if(s.unitMode && s.unitMode !== unitMode){
+    unitMode = s.unitMode;
+    document.getElementById('btnMetric').classList.toggle('active', unitMode==='metric');
+    document.getElementById('btnImperial').classList.toggle('active', unitMode==='imperial');
+  }
+  document.getElementById('projectName').value = s.projectName || '';
+  document.getElementById('projectDate').value = s.projectDate || '';
+  if(s.floorMode){
+    document.querySelectorAll('input[name="floorMode"]').forEach(r => { r.checked = r.value === s.floorMode; });
+    onFloorModeChange();
+  }
+  if(s.wallMode){
+    document.querySelectorAll('input[name="wallMode"]').forEach(r => { r.checked = r.value === s.wallMode; });
+    onWallModeChange();
+  }
+  if(s.wallLenManual){
+    for(let i=1;i<=4;i++) wallLenManual[i] = !!s.wallLenManual[i];
+  } else {
+    for(let i=1;i<=4;i++){
+      const v = s['wallLen'+i];
+      wallLenManual[i] = (v !== undefined && v !== '' && parseFloat(v) > 0);
+    }
+  }
+  const ids = ['extTemp','intTemp','roomWidth','roomLength','roomHeight',
+    'roomHeightIrreg','floorAreaDirect','wallLenTotal',
+    'wallLen1','wallLen2','wallLen3','wallLen4',
+    'glassLen1','glassLen2','glassLen3','glassLen4',
+    'glassHeight',
+    'uFloor','uCeiling','uWalls','uGlass',
+    'baseFloor','baseCeiling','baseWalls',
+    'baseThick1_Floor','baseThick2_Floor','baseThick3_Floor','baseCustomK_Floor',
+    'baseThick1_Ceiling','baseThick2_Ceiling','baseThick3_Ceiling','baseCustomK_Ceiling',
+    'baseThick1_Walls','baseThick2_Walls','baseThick3_Walls','baseCustomK_Walls',
+    'insFloor','insCeiling','insWalls',
+    'insThick_Floor','insThick_Ceiling','insThick_Walls',
+    'insCustomK_Floor','insCustomK_Ceiling','insCustomK_Walls',
+    'glazeConfig','lowECoating',
+    'gPane1','gGap1','gPane2','gGap2','gPane3',
+    'gPaneType1','gPaneType2','gPaneType3',
+    'gInterlayer1','gInterlayer2','gInterlayer3',
+    'glazeUseEnvTemps',
+    'disregardBase_Floor','disregardBase_Ceiling','disregardBase_Walls',
+    'disregardSolar',
+    'numPeople','heatPerPerson','peopleHours',
+    'lightContMode','lightContPower','lightContHours',
+    'ledContLen','ledContWm','ledContDim',
+    'lightIntMode','lightIntPower','lightIntDuty',
+    'ledIntLen','ledIntWm','ledIntDim',
+    'doorOpenings','doorLoss',
+    'wineBottles','wineVolume','wineInTemp',
+    'solarRegion','solarMonth'];
+  ids.forEach(id => {
+    if(s[id] === undefined) return;
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(el.type === 'checkbox') el.checked = !!s[id];
+    else el.value = s[id];
+  });
+  if(s.overrideGlassH !== undefined){
+    document.getElementById('overrideGlassH').checked = !!s.overrideGlassH;
+    document.getElementById('glassHeightRow').style.display = s.overrideGlassH ? '' : 'none';
+  }
+  allSurfKeys.forEach(k => {
+    if(s['surfTemp'+k] !== undefined) document.getElementById('surfTemp'+k).value = s['surfTemp'+k];
+  });
+  if(s.surfManual) Object.assign(surfManual, s.surfManual);
+  if(s.uAutoMode) Object.assign(uAutoMode, s.uAutoMode);
+  for(let i=1;i<=4;i++){
+    if(s['solarOrient'+i]) document.getElementById('solarOrient'+i).value = s['solarOrient'+i];
+    if(s['solarIrr'+i]) document.getElementById('solarIrr'+i).value = s['solarIrr'+i];
+    if(s['solarIrrOverride'+i] !== undefined){
+      document.getElementById('solarIrrOverride'+i).checked = s['solarIrrOverride'+i];
+      onIrrOverride(i);
+    }
+    if(s['shgcMode'+i]) document.getElementById('shgcMode'+i).value = s['shgcMode'+i];
+    if(s['shgcVal'+i]) document.getElementById('shgcVal'+i).value = s['shgcVal'+i];
+    if(s['solarExtShade'+i]) document.getElementById('solarExtShade'+i).value = s['solarExtShade'+i];
+    if(s['solarIntShade'+i]) document.getElementById('solarIntShade'+i).value = s['solarIntShade'+i];
+    const mode = document.getElementById('shgcMode'+i).value;
+    const inp = document.getElementById('shgcVal'+i);
+    inp.readOnly = mode === 'auto';
+    inp.style.background = mode === 'auto' ? '#f0f0f0' : '';
+  }
+  document.getElementById('equipContainer').innerHTML = '';
+  equipRows = [];
+  if(s.equipment && s.equipment.length > 0){
+    s.equipment.forEach(eq => addEquipRow(eq.name, eq.power, eq.hours));
+  }
+  solidSurfaces.forEach(s2 => { applyDisregardBaseUI(s2); showBaseFields(s2); onInsChange(s2); if(uAutoMode[s2]) calcSolidU(s2); });
+  onGlazeConfigChange();
+  [1,2,3].forEach(n => { onPaneTypeChange(n); });
+  document.getElementById('lightContMode').dataset.prevMode = document.getElementById('lightContMode').value;
+  document.getElementById('lightIntMode').dataset.prevMode = document.getElementById('lightIntMode').value;
+  updateLightUI('Cont');
+  updateLightUI('Int');
+  updateLabels();
+  recalc();
+}
+
+function sanitizeFilename(str){
+  return str.replace(/[^a-zA-Z0-9._\-]/g, '_');
+}
+
+function clearProjWarn(){ document.getElementById('projWarn').textContent = ''; }
+
+function hasFileSystemAccess(){
+  return typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
+}
+
+function isInIframe(){
+  try { return window.self !== window.top; } catch(e){ return true; }
+}
+
+function updateFileAccessStatus(){
+  const el = document.getElementById('fileAccessStatus');
+  const iframeEl = document.getElementById('iframeWarn');
+  if(hasFileSystemAccess()){
+    el.innerHTML = 'File picker supported: <span class="yes">Yes</span>';
+  } else {
+    el.innerHTML = 'File picker supported: <span class="no">No</span> — Tip: Open the exported offline HTML in Chrome/Edge (not inside embedded preview) to enable folder selection.';
+  }
+  if(isInIframe()){
+    iframeEl.style.display = 'flex';
+  } else {
+    iframeEl.style.display = 'none';
+  }
+}
+
+function validateProject(){
+  const name = document.getElementById('projectName').value.trim();
+  const date = document.getElementById('projectDate').value.trim();
+  if(!name || !date){
+    document.getElementById('projWarn').textContent = 'Project Name and Date are required.';
+    if(!name) document.getElementById('projectName').classList.add('invalid');
+    if(!date) document.getElementById('projectDate').classList.add('invalid');
+    return false;
+  }
+  document.getElementById('projectName').classList.remove('invalid');
+  document.getElementById('projectDate').classList.remove('invalid');
+  return true;
+}
+
+function buildFilename(ext){
+  const state = collectState();
+  const name = sanitizeFilename(state.projectName);
+  const date = sanitizeFilename(state.projectDate);
+  return 'HeatGain_'+name+'_'+date+'.'+ext;
+}
+
+function fallbackDownload(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function showFallbackModal(blob, filename, successMsg){
+  const modal = document.getElementById('fallbackModal');
+  const btn = document.getElementById('fallbackDownloadBtn');
+  modal.classList.add('open');
+  btn.onclick = function(){
+    fallbackDownload(blob, filename);
+    modal.classList.remove('open');
+    showToast(successMsg);
+  };
+}
+
+function closeFallbackModal(){
+  document.getElementById('fallbackModal').classList.remove('open');
+}
+
+async function saveProject(){
+  if(!validateProject()) return;
+  const state = collectState();
+  const json = JSON.stringify(state, null, 2);
+  const filename = buildFilename('json');
+  const blob = new Blob([json], {type:'application/json'});
+
+  if(hasFileSystemAccess()){
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{description:'JSON Files', accept:{'application/json':['.json']}}]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showToast('Project saved: '+handle.name);
+      return;
+    } catch(err){
+      if(err.name === 'AbortError') return;
+      showToast('File picker failed — use fallback download.');
+    }
+  }
+  showFallbackModal(blob, filename, 'Project saved: '+filename);
+}
+
+async function loadProject(){
+  if(hasFileSystemAccess()){
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{description:'JSON Files', accept:{'application/json':['.json']}}],
+        multiple: false
+      });
+      const file = await handle.getFile();
+      const text = await file.text();
+      try {
+        const state = JSON.parse(text);
+        applyState(state);
+        showToast('Project loaded: '+(state.projectName||file.name));
+      } catch(err){
+        alert('Failed to parse project: '+err.message);
+      }
+      return;
+    } catch(err){
+      if(err.name === 'AbortError') return;
+      showToast('File picker failed — using file input fallback.');
+    }
+  }
+  document.getElementById('loadFileInput').click();
+}
+
+function onLoadFileSelected(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const state = JSON.parse(e.target.result);
+      applyState(state);
+      showToast('Project loaded: '+(state.projectName||file.name));
+    } catch(err){
+      alert('Failed to load project: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+async function exportOffline(){
+  if(!validateProject()) return;
+  const state = collectState();
+  const filename = buildFilename('html');
+  const fullHtml = document.documentElement.outerHTML;
+  const stateJson = JSON.stringify(state);
+  const exportedHtml = '<!DOCTYPE html>\n<html lang="en">' +
+    fullHtml.replace('</body>', '<script>var __EMBEDDED_PROJECT__='+stateJson+';<\/script>\n</body>');
+  const blob = new Blob([exportedHtml], {type:'text/html'});
+
+  if(hasFileSystemAccess()){
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{description:'HTML Files', accept:{'text/html':['.html']}}]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showToast('Exported: '+handle.name);
+      return;
+    } catch(err){
+      if(err.name === 'AbortError') return;
+      showToast('File picker failed — use fallback download.');
+    }
+  }
+  showFallbackModal(blob, filename, 'Exported: '+filename);
+}
+
+function showToast(msg){
+  const toast = document.getElementById('copyToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 2500);
+}
+
+function resetDefaults(){
+  if(getVal('roomWidth') > 0 || getVal('roomLength') > 0 || getVal('roomHeight') > 0){
+    if(!confirm('Reset all defaults? Geometry values will be preserved. Click OK to proceed.'))return;
+  }
+  if(unitMode==='imperial') setUnit('metric');
+  document.querySelectorAll('input[name="floorMode"]').forEach(r => { r.checked = r.value === 'rect'; });
+  onFloorModeChange();
+  document.querySelectorAll('input[name="wallMode"]').forEach(r => { r.checked = r.value === 'individual'; });
+  onWallModeChange();
+  setVal('floorAreaDirect', '');
+  setVal('roomHeightIrreg', '');
+  setVal('wallLenTotal', '');
+  for(let i=1;i<=4;i++) wallLenManual[i] = false;
+  setVal('extTemp', 22);
+  setVal('intTemp', 13);
+  allSurfKeys.forEach(k => { setVal('surfTemp'+k, 22); surfManual[k] = false; });
+  document.getElementById('baseFloor').value = 'concrete';
+  document.getElementById('baseCeiling').value = 'concrete';
+  document.getElementById('baseWalls').value = 'drywall_cav';
+  solidSurfaces.forEach(s => {
+    document.getElementById('ins'+s).value = 'none';
+    document.getElementById('insThick_'+s).value = 0;
+    document.getElementById('insThickField_'+s).style.display = 'none';
+    document.getElementById('insCustomKField_'+s).style.display = 'none';
+    uAutoMode[s] = true;
+    document.getElementById('customNote_'+s).style.display = 'none';
+    onBaseChange(s);
+  });
+  document.getElementById('glazeConfig').value = 'double';
+  document.getElementById('lowECoating').value = 'none';
+  resetPaneTypes();
+  setVal('gPane1', 4); setVal('gGap1', 12); setVal('gPane2', 4);
+  setVal('gGap2', 12); setVal('gPane3', 4);
+  onGlazeConfigChange();
+  setVal('numPeople', 0);
+  setVal('heatPerPerson', 75);
+  setVal('peopleHours', 2);
+  setVal('lightContPower', 0);
+  setVal('lightContHours', 24);
+  document.getElementById('lightContMode').value = 'W';
+  document.getElementById('lightContMode').dataset.prevMode = 'W';
+  setVal('ledContLen', 0); setVal('ledContWm', 5); setVal('ledContDim', 50);
+  lightSavedState.Cont = {};
+  setVal('lightIntPower', 0);
+  setVal('lightIntDuty', 25);
+  document.getElementById('lightIntMode').value = 'W';
+  document.getElementById('lightIntMode').dataset.prevMode = 'W';
+  setVal('ledIntLen', 0); setVal('ledIntWm', 5); setVal('ledIntDim', 50);
+  lightSavedState.Int = {};
+  updateLightUI('Cont');
+  updateLightUI('Int');
+  setVal('doorOpenings', 0);
+  setVal('doorLoss', 10);
+  setVal('wineBottles', 0);
+  setVal('wineVolume', 0.75);
+  setVal('wineInTemp', 22);
+  document.getElementById('wineInTemp').dataset.autoSync = 'true';
+  document.getElementById('equipContainer').innerHTML = '';
+  equipRows = [];
+  document.getElementById('disregardSolar').checked = true;
+  document.getElementById('disregardBase_Floor').checked = true;
+  document.getElementById('disregardBase_Ceiling').checked = true;
+  document.getElementById('disregardBase_Walls').checked = true;
+  solidSurfaces.forEach(s => applyDisregardBaseUI(s));
+  document.getElementById('solarRegion').value = 'na_hot';
+  document.getElementById('solarMonth').value = '6';
+  for(let i=1; i<=4; i++){
+    document.getElementById('solarOrient'+i).value = 'S';
+    document.getElementById('solarIrrOverride'+i).checked = false;
+    onIrrOverride(i);
+    document.getElementById('shgcMode'+i).value = 'auto';
+    onShgcModeChange(i);
+    document.getElementById('solarExtShade'+i).value = '0.90';
+    document.getElementById('solarIntShade'+i).value = '0.75';
+  }
+  recalc();
+}
+
+function generatePDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p','mm','a4');
+  const pw = 210, ph = 297;
+  const ml = 15, mr = 15, cw = pw - ml - mr;
+  let y = 15;
+  const colPrimary = [26,82,118];
+  const colAccent = [230,126,34];
+  const colGray = [100,100,100];
+  const colBlack = [33,33,33];
+  const colLightBg = [245,247,250];
+
+  function heading(text, size){
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(size || 11);
+    doc.setTextColor(...colPrimary);
+    doc.text(text, ml, y);
+    y += 1;
+    doc.setDrawColor(...colPrimary);
+    doc.setLineWidth(0.4);
+    doc.line(ml, y, pw - mr, y);
+    y += 4;
+  }
+  function row2(label, val, bold){
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...colBlack);
+    doc.text(label, ml + 2, y);
+    doc.text(val, pw - mr - 2, y, { align: 'right' });
+    y += 3.8;
+  }
+  function row3(label, w, btu, bold, bg){
+    if(bg){
+      doc.setFillColor(...bg);
+      doc.rect(ml, y - 3.2, cw, 4.2, 'F');
+    }
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(bold ? 9 : 8);
+    doc.setTextColor(...colBlack);
+    doc.text(label, ml + 2, y);
+    doc.text(w, ml + cw * 0.62, y, { align: 'right' });
+    doc.text(btu, pw - mr - 2, y, { align: 'right' });
+    y += bold ? 4.5 : 3.8;
+  }
+  function gap(h){ y += (h || 2); }
+
+  const pName = document.getElementById('projectName').value || 'Untitled';
+  const pDate = document.getElementById('projectDate').value || '';
+  const now = new Date().toLocaleString();
+
+  doc.setFillColor(...colPrimary);
+  doc.rect(0, 0, pw, 22, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255,255,255);
+  doc.text('Heat Gain Calculator — Summary Report', ml, 10);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('Project: ' + pName + (pDate ? '  |  Date: ' + pDate : '') + '  |  Generated: ' + now, ml, 17);
+  y = 28;
+
+  const extC = toSI_temp(getVal('extTemp'));
+  const intC = toSI_temp(getVal('intTemp'));
+  const roomH = getEffectiveHeight();
+  const floorA = getEffectiveFloorArea();
+  const vol = floorA * roomH;
+  const wallLenSI = getEffectiveWallLengths();
+  const totalWallLen = wallLenSI.reduce((a,b)=>a+b,0);
+  let totalWallArea = 0;
+  let totalGlassArea = 0;
+  const glassHOverride = document.getElementById('overrideGlassH').checked;
+  let glassHeightSI = roomH;
+  if(glassHOverride){ const gh = getVal('glassHeight'); if(!isNaN(gh) && gh > 0) glassHeightSI = toSI_len(gh); }
+  for(let i=0;i<4;i++){
+    if(wallLenSI[i]>0){
+      totalWallArea += wallLenSI[i] * roomH;
+      const gl = toSI_len(getVal('glassLen'+(i+1))||0);
+      totalGlassArea += gl * glassHeightSI;
+    }
+  }
+
+  const hasOverrides = allSurfKeys.some(k => surfManual[k]);
+
+  heading('Key Inputs');
+  row2('Units Mode', unitMode === 'metric' ? 'Metric' : 'Imperial');
+  row2('Cellar Setpoint', fmt(intC,1)+' \u00B0C / '+fmt(cToF(intC),1)+' \u00B0F');
+  row2('Exterior Temperature', fmt(extC,1)+' \u00B0C / '+fmt(cToF(extC),1)+' \u00B0F' + (hasOverrides ? '  (per-surface overrides active)' : ''));
+  if(getFloorMode() === 'rect'){
+    const rW = toSI_len(getVal('roomWidth')||0), rL = toSI_len(getVal('roomLength')||0);
+    row2('Room Dimensions', fmt(rW,2)+' x '+fmt(rL,2)+' x '+fmt(roomH,2)+' m  ('+fmt(mToFt(rW),1)+' x '+fmt(mToFt(rL),1)+' x '+fmt(mToFt(roomH),1)+' ft)');
+  } else {
+    row2('Room Geometry', 'Floor Area: '+fmt(floorA,2)+' m\u00B2 ('+fmt(sqmToSqft(floorA),1)+' ft\u00B2), Height: '+fmt(roomH,2)+' m ('+fmt(mToFt(roomH),1)+' ft)');
+  }
+  row2('Room Volume', fmt(vol,1)+' m\u00B3 / '+fmt(vol*35.3147,0)+' ft\u00B3');
+  row2('Total Wall Length / Area', fmt(totalWallLen,2)+' m / '+fmt(totalWallArea,1)+' m\u00B2 ('+fmt(sqmToSqft(totalWallArea),1)+' ft\u00B2)');
+  row2('Total Glass Area', fmt(totalGlassArea,2)+' m\u00B2 / '+fmt(sqmToSqft(totalGlassArea),1)+' ft\u00B2');
+  gap(3);
+
+  heading('U-Values');
+  const uFloorSI = toSI_u(getVal('uFloor'));
+  const uCeilSI = toSI_u(getVal('uCeiling'));
+  const uWallsSI = toSI_u(getVal('uWalls'));
+  const uGlassSI = toSI_u(getVal('uGlass'));
+  function uStr(v){ return fmt(v,2)+' W/m\u00B2K ('+fmt(uSiToImp(v),3)+' BTU/h\u00B7ft\u00B2\u00B7\u00B0F)'; }
+  const dbF = document.getElementById('disregardBase_Floor').checked;
+  const dbC = document.getElementById('disregardBase_Ceiling').checked;
+  const dbW = document.getElementById('disregardBase_Walls').checked;
+  row2('Floor U-value', uStr(uFloorSI) + (dbF ? '  [Base Disregarded]' : ''));
+  row2('Ceiling U-value', uStr(uCeilSI) + (dbC ? '  [Base Disregarded]' : ''));
+  row2('Walls U-value', uStr(uWallsSI) + (dbW ? '  [Base Disregarded]' : ''));
+  row2('Glass U-value', uStr(uGlassSI));
+  gap(3);
+
+  const disregardSolar = document.getElementById('disregardSolar').checked;
+  heading('Solar / SHGC');
+  if(disregardSolar){
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...colGray);
+    doc.text('Solar Heat Gain: Disregarded', ml + 2, y);
+    y += 4;
+  } else {
+    const region = document.getElementById('solarRegion');
+    const regionText = region.options[region.selectedIndex].text;
+    const monthSel = document.getElementById('solarMonth');
+    const monthText = monthSel.options[monthSel.selectedIndex].text;
+    row2('Region / Month', regionText + ' / ' + monthText);
+    let solarTotalPdf = 0;
+    for(let i=1;i<=4;i++){
+      const gl = toSI_len(getVal('glassLen'+i)||0);
+      if(gl <= 0 && wallLenSI[i-1] <= 0) continue;
+      const ga = gl * glassHeightSI;
+      const orient = document.getElementById('solarOrient'+i).value;
+      const shgc = parseFloat(document.getElementById('shgcVal'+i).value)||0;
+      const extS = Math.max(0,Math.min(1,parseFloat(document.getElementById('solarExtShade'+i).value)||0));
+      const intS = Math.max(0,Math.min(1,parseFloat(document.getElementById('solarIntShade'+i).value)||0));
+      const irr = parseFloat(document.getElementById('solarIrr'+i).value)||0;
+      solarTotalPdf += ga * irr * shgc * extS * intS;
+      row2('Wall '+i+' ('+orient+')', 'SHGC='+fmt(shgc,3)+', Fext='+fmt(extS,2)+', Fint='+fmt(intS,2)+', Irr='+fmt(irr,0)+' W/m\u00B2');
+    }
+    row2('Solar Gain Total', fmt(solarTotalPdf,1)+' W / '+fmt(wToBtu(solarTotalPdf),1)+' BTU/h', true);
+  }
+  gap(3);
+
+  heading('Internal Gains');
+  const numPeople = getVal('numPeople')||0;
+  const heatPP = getVal('heatPerPerson')||0;
+  const pHours = Math.min(24,Math.max(0,getVal('peopleHours')||0));
+  const qPeople = numPeople * heatPP * (pHours/24);
+  const lcMode = document.getElementById('lightContMode').value;
+  let lcPower;
+  if(lcMode === 'LED'){ lcPower = calcLedPower('Cont'); } else { lcPower = getVal('lightContPower')||0; if(lcMode==='Wm2') lcPower = lcPower * floorA; }
+  const lcHours = Math.min(24,Math.max(0,getVal('lightContHours')||0));
+  const qLightCont = lcPower * (lcHours/24);
+  const liMode = document.getElementById('lightIntMode').value;
+  let liPower;
+  if(liMode === 'LED'){ liPower = calcLedPower('Int'); } else { liPower = getVal('lightIntPower')||0; if(liMode==='Wm2') liPower = liPower * floorA; }
+  const liDuty = Math.min(100,Math.max(0,getVal('lightIntDuty')||0));
+  const qLightInt = liPower * (liDuty/100);
+  let qEquip = 0;
+  equipRows.forEach(id => {
+    const r = document.getElementById('eqRow_'+id);
+    if(!r) return;
+    const pw2 = parseFloat(r.querySelector('.eq-power').value)||0;
+    const hr = Math.min(24,Math.max(0,parseFloat(r.querySelector('.eq-hours').value)||0));
+    qEquip += pw2*(hr/24);
+  });
+  const doorOp = getVal('doorOpenings')||0;
+  const doorL = getVal('doorLoss')||0;
+  const qDoor = doorOp * doorL;
+  const wineB = getVal('wineBottles')||0;
+  const wineV = getVal('wineVolume')||0.75;
+  const wineInSI = toSI_temp(getVal('wineInTemp'));
+  const wineDT = Math.abs(wineInSI - intC);
+  const qWine = (wineB*wineV*1*4186*wineDT)/86400;
+  const internalTotal = qPeople+qLightCont+qLightInt+qEquip+qDoor+qWine;
+
+  function igRow(lbl,val){ row2(lbl, fmt(val,1)+' W / '+fmt(wToBtu(val),1)+' BTU/h'); }
+  igRow('People', qPeople);
+  igRow('Lighting (Continuous)', qLightCont);
+  igRow('Lighting (Intermittent)', qLightInt);
+  igRow('Equipment / Other', qEquip);
+  igRow('Door Opening Loss', qDoor);
+  igRow('Wine Bottle Turnover', qWine);
+  row2('Internal Gains Subtotal', fmt(internalTotal,1)+' W / '+fmt(wToBtu(internalTotal),1)+' BTU/h', true);
+  gap(3);
+
+  const resultsNeeded = 45;
+  if(y > ph - resultsNeeded - 10){
+    y = ph - resultsNeeded - 8;
+  }
+
+  const rows = document.querySelectorAll('#resultsTableBody tr');
+  let condSub=0, solarSub=0, intSub=0, grand=0;
+  rows.forEach(r => {
+    const cells = r.querySelectorAll('td');
+    if(cells.length < 3) return;
+    const lbl = cells[0].textContent.trim();
+    const wVal = parseFloat(cells[1].textContent);
+    if(lbl.startsWith('Conduction Subtotal')) condSub = wVal;
+    else if(lbl.startsWith('Solar Gain Subtotal')) solarSub = wVal;
+    else if(lbl.startsWith('Internal Gains Subtotal')) intSub = wVal;
+    else if(lbl.startsWith('GRAND TOTAL')) grand = wVal;
+  });
+
+  heading('Results', 12);
+  row3('', 'Watts (W)', 'BTU/h', true);
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.2); doc.line(ml, y-2, pw-mr, y-2);
+
+  row3('Conduction Subtotal', fmt(condSub,1), fmt(wToBtu(condSub),1), false, colLightBg);
+  row3('Solar Gain Subtotal' + (disregardSolar ? '  (Disregarded)' : ''), fmt(solarSub,1), fmt(wToBtu(solarSub),1), false);
+  row3('Internal Gains Subtotal', fmt(intSub,1), fmt(wToBtu(intSub),1), false, colLightBg);
+  gap(1);
+  doc.setDrawColor(...colPrimary); doc.setLineWidth(0.5); doc.line(ml, y-1.5, pw-mr, y-1.5);
+  gap(1);
+
+  doc.setFillColor(...colPrimary);
+  doc.rect(ml, y - 3.8, cw, 7, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(255,255,255);
+  doc.text('GRAND TOTAL', ml + 3, y + 0.5);
+  doc.text(fmt(grand,1)+' W', ml + cw * 0.62, y + 0.5, { align: 'right' });
+  doc.text(fmt(wToBtu(grand),1)+' BTU/h', pw - mr - 2, y + 0.5, { align: 'right' });
+  y += 8;
+
+  doc.setFont('helvetica','italic');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...colGray);
+  doc.text('All values are estimates. Verify with detailed engineering as required.', ml, ph - 8);
+
+  const safeName = sanitizeFilename(pName || 'Untitled');
+  const safeDate = sanitizeFilename(pDate || 'NoDate');
+  const filename = 'HeatGain_' + safeName + '_' + safeDate + '.pdf';
+  doc.save(filename);
+  showToast('PDF saved: ' + filename);
+}
+
+function init(){
+  populateMaterialDropdowns();
+  allSurfKeys.forEach(k => setVal('surfTemp'+k, 22));
+  setVal('wineInTemp', 22);
+  solidSurfaces.forEach(s => { applyDisregardBaseUI(s); onInsChange(s); });
+  onGlazeConfigChange();
+  document.getElementById('lightContMode').dataset.prevMode = 'W';
+  document.getElementById('lightIntMode').dataset.prevMode = 'W';
+  updateLabels();
+  updateFileAccessStatus();
+  if(typeof __EMBEDDED_PROJECT__ !== 'undefined'){
+    applyState(__EMBEDDED_PROJECT__);
+  }
+  recalc();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
